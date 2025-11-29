@@ -29,6 +29,46 @@ export default function Transactions({ navigation }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loadingPrice, setLoadingPrice] = useState(false);
 
+  useEffect(() => {
+    const delayDebounce = setTimeout(async () => {
+      if (ticker.length >= 2) {
+        const searchType = type === 'cripto' ? 'cripto' : 'stock';
+        const results = await searchAssets(ticker, searchType);
+        setSuggestions(results);
+      } else {
+        setSuggestions([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [ticker, type]);
+
+  const handleSelectAsset = async (selectedTicker) => {
+    setTicker(selectedTicker);
+    setSuggestions([]);
+    fetchCurrentPrice(selectedTicker);
+  };
+
+  const fetchCurrentPrice = async (symbol) => {
+    setLoadingPrice(true);
+    let data = null;
+    
+    try {
+      if (type === 'cripto') {
+        data = await getCryptoQuote(symbol);
+      } else {
+        data = await getStockQuote(symbol);
+      }
+
+      if (data && data.regularMarketPrice) {
+        setPrice(data.regularMarketPrice.toString());
+      }
+    } catch (e) {
+      console.log("Erro ao buscar preço", e);
+    } finally {
+      setLoadingPrice(false);
+    }
+  };
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === "ios" ? "padding" : "height"}
