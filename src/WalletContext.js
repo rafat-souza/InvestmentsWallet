@@ -93,7 +93,16 @@ export const WalletProvider = ({ children }) => {
     setPositions(positionsArray);
   };
 
+  const togglePrivacyMode = async (value) => {
+    setIsPrivacyMode(value);
+    await AsyncStorage.setItem('@privacy_mode', JSON.stringify(value));
+  };
+
   const clearAllData = async () => {
+    await AsyncStorage.clear();
+    setTransactions([]);
+    setPositions([]);
+    setIsPrivacyMode(false);
   };
 
   return (
@@ -101,7 +110,9 @@ export const WalletProvider = ({ children }) => {
       isPrivacyMode, 
       togglePrivacyMode, 
       clearAllData,
-      walletData 
+      transactions,
+      positions, 
+      addTransaction
     }}>
       {children}
     </WalletContext.Provider>
