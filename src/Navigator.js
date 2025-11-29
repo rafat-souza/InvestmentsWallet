@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import Dashboard from './Screens/Dashboard';
 import Positions from './Screens/Positions';
-import Transaction from './Screens/Transactions';
+import Transactions from './Screens/Transactions';
 import Settings from './Screens/Settings';
 import About from './Screens/About';
 
@@ -28,7 +28,7 @@ function HomeTabs() {
     >
       <Tab.Screen name="Dashboard" component={Dashboard} />
       <Tab.Screen name="Posições" component={Positions} />
-      <Tab.Screen name="Cadastrar" component={Transaction} />
+      <Tab.Screen name="Cadastrar" component={Transactions} />
     </Tab.Navigator>
   );
 }
