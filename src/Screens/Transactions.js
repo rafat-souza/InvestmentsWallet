@@ -15,6 +15,19 @@ const ASSET_TYPES = [
   { id: 'cripto', label: 'Cripto', icon: 'logo-bitcoin' },
 ];
 
+export default function Transactions({ navigation }) {
+  const { addTransaction } = useContext(WalletContext);
+
+  const [type, setType] = useState('stock'); 
+  const [operation, setOperation] = useState('COMPRA');
+  
+  const [ticker, setTicker] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [price, setPrice] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingPrice, setLoadingPrice] = useState(false);
 
   return (
     <KeyboardAvoidingView 
