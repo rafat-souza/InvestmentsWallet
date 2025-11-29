@@ -2,11 +2,11 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
-import Dashboard from '../Screens/Dashboard';
-import Positions from '../Screens/Positions';
-import Transaction from '../Screens/Transactions';
-import Settings from '../Screens/Settings';
-import About from '../Screens/About';
+import Dashboard from './Screens/Dashboard';
+import Positions from './Screens/Positions';
+import Transaction from './Screens/Transactions';
+import Settings from './Screens/Settings';
+import About from './Screens/About';
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
