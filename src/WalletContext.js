@@ -5,39 +5,95 @@ export const WalletContext = createContext({});
 
 export const WalletProvider = ({ children }) => {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
-  const [walletData, setWalletData] = useState([]); 
+  
+  const [transactions, setTransactions] = useState([]);
+  
+  const [positions, setPositions] = useState([]);
 
   useEffect(() => {
-    loadSettings();
+    loadData();
   }, []);
 
-  const loadSettings = async () => {
+  const loadData = async () => {
     try {
       const privacy = await AsyncStorage.getItem('@privacy_mode');
+      const storedTransactions = await AsyncStorage.getItem('@transactions');
+      
       if (privacy !== null) setIsPrivacyMode(JSON.parse(privacy));
+      if (storedTransactions !== null) {
+        const parsedTrans = JSON.parse(storedTransactions);
+        setTransactions(parsedTrans);
+        recalculatePortfolio(parsedTrans); 
+      }
     } catch (e) {
-      console.error("Erro ao carregar configurações", e);
+      console.error("Erro ao carregar dados", e);
     }
   };
 
-  const togglePrivacyMode = async (value) => {
+  const addTransaction = async (newTransaction) => {
     try {
-      setIsPrivacyMode(value);
-      await AsyncStorage.setItem('@privacy_mode', JSON.stringify(value));
+      const updatedTransactions = [...transactions, newTransaction];
+      
+      setTransactions(updatedTransactions);
+      await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTransactions));
+      
+      recalculatePortfolio(updatedTransactions);
+
     } catch (e) {
-      console.error("Erro ao salvar privacidade", e);
+      console.error("Erro ao salvar transação", e);
     }
+  };
+
+  const recalculatePortfolio = (allTransactions) => {
+    const port = {}; 
+
+    allTransactions.forEach(tx => {
+      const ticker = tx.ticker;
+      
+      if (!port[ticker]) {
+        port[ticker] = {
+          ticker: ticker,
+          type: tx.type, 
+          quantity: 0,
+          averagePrice: 0,
+          totalInvested: 0,
+        };
+      }
+
+      const current = port[ticker];
+
+      if (tx.operation === 'COMPRA') {
+        const currentTotalValue = current.quantity * current.averagePrice;
+        const newPurchaseValue = tx.quantity * tx.price;
+        
+        const newTotalQty = current.quantity + tx.quantity;
+        
+        if (newTotalQty > 0) {
+          current.averagePrice = (currentTotalValue + newPurchaseValue) / newTotalQty;
+        }
+        
+        current.quantity = newTotalQty;
+        current.totalInvested += newPurchaseValue;
+
+      } else if (tx.operation === 'VENDA') {
+        current.quantity -= tx.quantity;
+        
+        if (current.quantity <= 0) {
+          current.quantity = 0;
+          current.totalInvested = 0;
+          current.averagePrice = 0;
+        } else {
+          current.totalInvested = current.quantity * current.averagePrice;
+        }
+      }
+    });
+
+    const positionsArray = Object.values(port).filter(p => p.quantity > 0);
+    
+    setPositions(positionsArray);
   };
 
   const clearAllData = async () => {
-    try {
-      await AsyncStorage.clear();
-      setWalletData([]);
-      setIsPrivacyMode(false);
-      alert('Dados limpos com sucesso!');
-    } catch (e) {
-      console.error("Erro ao limpar dados", e);
-    }
   };
 
   return (
