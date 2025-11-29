@@ -69,6 +69,30 @@ export default function Transactions({ navigation }) {
       setLoadingPrice(false);
     }
   };
+
+  const handleSave = () => {
+    if (!ticker || !quantity || !price) {
+      Alert.alert("Erro", "Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    const transaction = {
+      id: Date.now().toString(),
+      type: type, 
+      operation, 
+      ticker: ticker.toUpperCase(),
+      quantity: parseFloat(quantity.replace(',', '.')),
+      price: parseFloat(price.replace(',', '.')),
+      date,
+      total: parseFloat(quantity.replace(',', '.')) * parseFloat(price.replace(',', '.'))
+    };
+
+    addTransaction(transaction);
+    Alert.alert("Sucesso", `${type.toUpperCase()} registrada com sucesso!`, [
+      { text: "OK", onPress: () => navigation.goBack() }
+    ]);
+  };
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === "ios" ? "padding" : "height"}
