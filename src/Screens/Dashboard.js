@@ -167,4 +167,34 @@ export default function DashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: '#fff', paddingBottom: 15 },
+  greeting: { fontSize: 22, fontWeight: 'bold', color: '#000' },
+  subGreeting: { fontSize: 14, color: '#667' },
+  privacyBtn: { padding: 8, backgroundColor: '#f0f0f0', borderRadius: 20 },
+
+  mainCard: { backgroundColor: '#121212', borderRadius: 16, padding: 20, margin: 20, marginTop: 10, elevation: 4 },
+  mainCardLabel: { color: '#ccc', fontSize: 14, marginBottom: 5 },
+  mainCardValue: { color: '#fff', fontSize: 32, fontWeight: 'bold', marginBottom: 20 },
+  emptyCardText: { color: '#667', fontStyle: 'italic', marginBottom: 10 },
+  
+  progressBarContainer: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: '#333', marginBottom: 12 },
+  legendContainer: { flexDirection: 'row', flexWrap: 'wrap' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', marginRight: 15, marginBottom: 5 },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
+  legendText: { color: '#ccc', fontSize: 12, fontWeight: 'bold' },
+
+  actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 20, marginBottom: 25 },
+  actionBtn: { alignItems: 'center', width: '30%', backgroundColor: '#fff', padding: 15, borderRadius: 12, elevation: 1 },
+  iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  actionLabel: { fontSize: 12, fontWeight: '600', color: '#333' },
+
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#000', marginBottom: 10, marginHorizontal: 20 },
+  transactionItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 8, marginHorizontal: 20, elevation: 1 },
+  transIconBox: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  transTicker: { fontWeight: 'bold', fontSize: 16, color: '#333' },
+  transType: { fontSize: 10, color: '#667', fontWeight: 'bold' },
+  transValue: { fontWeight: 'bold', fontSize: 14 },
+  transDate: { fontSize: 10, color: '#999' },
+  emptyText: { textAlign: 'center', color: '#999', marginTop: 20, fontStyle: 'italic' },
 });
