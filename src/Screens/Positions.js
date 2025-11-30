@@ -46,10 +46,46 @@ export default function PositionsScreen() {
     );
   };
 
-export default function Positions() {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Lista de Ativos (Ações, Cripto, etc)</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Minhas Posições</Text>
+        <Text style={styles.headerSubtitle}>{positions.length} ativos na carteira</Text>
+      </View>
+
+      {positions.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="wallet-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyText}>Sua carteira está vazia.</Text>
+          <Text style={styles.emptySub}>Comece cadastrando um aporte na aba "+".</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={positions}
+          keyExtractor={(item) => item.ticker}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
+
+const getIcon = (type) => {
+  switch (type) {
+    case 'cripto': return 'logo-bitcoin';
+    case 'bdr': return 'globe';
+    case 'etf': return 'layers';
+    default: return 'business';
+  }
+};
+
+const getTypeStyle = (type) => {
+  switch (type) {
+    case 'cripto': return { backgroundColor: '#fbc02d' }; 
+    case 'bdr': return { backgroundColor: '#1976d2' }; 
+    case 'etf': return { backgroundColor: '#7b1fa2' }; 
+    default: return { backgroundColor: '#2e7d32' }; 
+  }
+};
