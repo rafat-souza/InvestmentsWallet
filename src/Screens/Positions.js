@@ -89,3 +89,31 @@ const getTypeStyle = (type) => {
     default: return { backgroundColor: '#2e7d32' }; 
   }
 };
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  header: { padding: 20, backgroundColor: '#fff', paddingBottom: 15 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#000' },
+  headerSubtitle: { fontSize: 14, color: '#667' },
+  
+  listContent: { padding: 15 },
+  
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  tickerRow: { flexDirection: 'row', alignItems: 'center' },
+  iconBox: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  ticker: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  typeLabel: { fontSize: 10, color: '#888', fontWeight: 'bold' },
+  quantity: { fontSize: 16, fontWeight: '500', color: '#333' },
+  
+  divider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 12 },
+  
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  label: { fontSize: 12, color: '#888', marginBottom: 2 },
+  value: { fontSize: 16, color: '#333' },
+  valueBold: { fontSize: 16, color: '#000', fontWeight: 'bold' },
+
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
+  emptyText: { fontSize: 18, color: '#667', marginTop: 20, fontWeight: 'bold' },
+  emptySub: { fontSize: 14, color: '#999', marginTop: 5 }
+});
