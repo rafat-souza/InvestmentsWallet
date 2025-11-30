@@ -1,14 +1,17 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { getStockQuote, getCryptoQuote } from './api';
+
 export const WalletContext = createContext({});
 
 export const WalletProvider = ({ children }) => {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
-  
   const [transactions, setTransactions] = useState([]);
-  
   const [positions, setPositions] = useState([]);
+
+  const [currentPortfolioValue, setCurrentPortfolioValue] = useState(0);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -89,8 +92,39 @@ export const WalletProvider = ({ children }) => {
     });
 
     const positionsArray = Object.values(port).filter(p => p.quantity > 0);
-    
     setPositions(positionsArray);
+
+    const totalInvested = positionsArray.reduce((acc, item) => acc + item.totalInvested, 0);
+    setCurrentPortfolioValue(totalInvested);
+  };
+
+  const refreshPrices = async () => {
+    if (positions.length === 0) return;
+
+    let totalCurrentValue = 0;
+    
+    const updatedPositions = await Promise.all(positions.map(async (pos) => {
+      let currentPrice = pos.averagePrice; 
+      
+      try {
+        if (pos.type === 'cripto') {
+          const data = await getCryptoQuote(pos.ticker);
+          if (data) currentPrice = data.regularMarketPrice;
+        } else {
+          const data = await getStockQuote(pos.ticker);
+          if (data) currentPrice = data.regularMarketPrice;
+        }
+      } catch (error) {
+        console.log(`Erro ao atualizar ${pos.ticker}`, error);
+      }
+
+      totalCurrentValue += (pos.quantity * currentPrice);
+      
+      return { ...pos, currentPrice };
+    }));
+
+    setCurrentPortfolioValue(totalCurrentValue);
+    setLastUpdate(new Date());
   };
 
   const togglePrivacyMode = async (value) => {
@@ -102,6 +136,7 @@ export const WalletProvider = ({ children }) => {
     await AsyncStorage.clear();
     setTransactions([]);
     setPositions([]);
+    setCurrentPortfolioValue(0);
     setIsPrivacyMode(false);
   };
 
@@ -112,7 +147,10 @@ export const WalletProvider = ({ children }) => {
       clearAllData,
       transactions,
       positions, 
-      addTransaction
+      addTransaction, 
+      refreshPrices, 
+      currentPortfolioValue, 
+      lastUpdate
     }}>
       {children}
     </WalletContext.Provider>
