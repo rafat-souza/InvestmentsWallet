@@ -135,6 +135,34 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.actionLabel}>Análise</Text>
         </TouchableOpacity>
       </View>
+
+      <Text style={styles.sectionTitle}>Últimas Movimentações</Text>
+      {transactions.slice().reverse().slice(0, 5).map((item) => (
+        <View key={item.id} style={styles.transactionItem}>
+          <View style={[styles.transIconBox, {backgroundColor: item.operation === 'COMPRA' ? '#e8f5e9' : '#ffebee'}]}>
+             <Ionicons 
+               name={item.operation === 'COMPRA' ? 'arrow-down' : 'arrow-up'} 
+               size={18} 
+               color={item.operation === 'COMPRA' ? '#2e7d32' : '#d32f2f'} 
+             />
+          </View>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={styles.transTicker}>{item.ticker}</Text>
+            <Text style={styles.transType}>{item.type.toUpperCase()}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.transValue, { color: item.operation === 'COMPRA' ? '#333' : '#d32f2f' }]}>
+              {item.operation === 'COMPRA' ? '-' : '+'}{formatCurrency(item.total)}
+            </Text>
+            <Text style={styles.transDate}>{item.date}</Text>
+          </View>
+        </View>
+      ))}
+      {transactions.length === 0 && (
+        <Text style={styles.emptyText}>Nenhuma movimentação ainda.</Text>
+      )}
+      <View style={{ height: 30 }} />
+    </ScrollView>
   );
 }
 
