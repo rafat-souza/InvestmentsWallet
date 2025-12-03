@@ -1,53 +1,115 @@
-import React, { useContext, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl } from 'react-native';
+import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import { LineChart } from 'react-native-chart-kit';
 import { WalletContext } from '../WalletContext';
 
-const TYPE_COLORS = {
-  stock: '#2e7d32', 
-  cripto: '#fbc02d', 
-  bdr: '#1565c0',  
-  etf: '#7b1fa2'    
-};
+const TYPE_COLORS = { stock: '#2e7d32', cripto: '#fbc02d', bdr: '#1565c0', etf: '#7b1fa2' };
+const TYPE_LABELS = { stock: 'Ações', cripto: 'Cripto', bdr: 'BDRs', etf: 'ETFs' };
 
-const TYPE_LABELS = {
-  stock: 'Ações',
-  cripto: 'Cripto',
-  bdr: 'BDRs',
-  etf: 'ETFs'
-};
+const TIMEFRAMES = [
+  { key: 'all', label: 'Início' },
+  { key: 'month', label: 'Mês Atual' },
+  { key: 'year', label: 'Ano Atual' },
+  { key: '12m', label: '1 Ano' },
+];
 
 export default function DashboardScreen({ navigation }) {
-  const { positions, transactions, isPrivacyMode, togglePrivacyMode } = useContext(WalletContext);
-  const [refreshing, setRefreshing] = useState(false);
+  const { width } = useWindowDimensions();
+  const { positions, transactions, isPrivacyMode, togglePrivacyMode,
+    refreshPrices, currentPortfolioValue, lastUpdate } = useContext(WalletContext);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('all'); 
+
+  useEffect(() => {
+    if (positions.length > 0) {
+      refreshPrices();
+    }
+  }, [positions.length]); 
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshPrices();
+    setRefreshing(false);
+  }, [refreshPrices]);
+
+  
   const totalInvested = useMemo(() => {
     return positions.reduce((acc, item) => acc + (item.quantity * item.averagePrice), 0);
   }, [positions]);
 
+  const profitValue = currentPortfolioValue - totalInvested;
+  
+  const profitPercent = totalInvested > 0 ? (profitValue / totalInvested) * 100 : 0;
+
+  
+  const getChartLabels = () => {
+    const today = new Date();
+    const endLabel = `${today.getDate()}/${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+    
+    let startLabel = "Início";
+
+    switch (selectedTimeframe) {
+      case 'month':
+        startLabel = `01/${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+        break;
+      case 'year':
+        startLabel = `01/01/${today.getFullYear().toString().slice(-2)}`;
+        break;
+      case '12m':
+        startLabel = `${today.getDate()}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${(today.getFullYear() - 1).toString().slice(-2)}`;
+        break;
+      case 'all':
+      default:
+        if (transactions.length > 0) {
+          const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+          const firstDate = new Date(sorted[0].date);
+          startLabel = `${firstDate.getDate()}/${(firstDate.getMonth() + 1).toString().padStart(2, '0')}/${firstDate.getFullYear().toString().slice(-2)}`;
+        }
+        break;
+    }
+
+    return [startLabel, endLabel];
+  };
+
+  
+  const chartColor = (opacity = 1) => {
+    if (profitPercent >= 0) return `rgba(46, 125, 50, ${opacity})`; 
+    return `rgba(211, 47, 47, ${opacity})`; 
+  };
+
+  const chartData = {
+    labels: getChartLabels(),
+    datasets: [
+      {
+        data: [0, profitPercent], 
+        color: chartColor, 
+        strokeWidth: 3
+      },
+      {
+        
+        data: [0], 
+        withDots: false,
+      }
+    ]
+  };
+
   const allocationBreakdown = useMemo(() => {
     let breakdown = { stock: 0, bdr: 0, etf: 0, cripto: 0 };
-    
     positions.forEach(p => {
-      const investidoNoAtivo = p.quantity * p.averagePrice;
-      
+      const val = p.quantity * p.averagePrice; 
       const safeType = breakdown[p.type] !== undefined ? p.type : 'stock';
-      
-      breakdown[safeType] += investidoNoAtivo;
+      breakdown[safeType] += val;
     });
-    
     return Object.keys(breakdown)
       .map(type => ({
-        type,
-        value: breakdown[type],
+        type, value: breakdown[type],
         percent: totalInvested > 0 ? (breakdown[type] / totalInvested) * 100 : 0,
-        color: TYPE_COLORS[type],
-        label: TYPE_LABELS[type]
+        color: TYPE_COLORS[type], label: TYPE_LABELS[type]
       }))
-      .filter(item => item.value > 0) 
+      .filter(item => item.value > 0)
       .sort((a, b) => b.value - a.value); 
-
   }, [positions, totalInvested]);
 
   const formatCurrency = (value) => {
@@ -55,27 +117,20 @@ export default function DashboardScreen({ navigation }) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
-        setRefreshing(false);
-    }, 1000);
-  }, []);
-
   return (
     <ScrollView 
       style={styles.container} 
       showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2e7d32']} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2e7d32']} />}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Olá, Investidor</Text>
-          <Text style={styles.subGreeting}>Visão do seu Custo de Aquisição</Text>
+          <Text style={styles.subGreeting}>
+             {lastUpdate ? `Atualizado: ${new Date(lastUpdate).toLocaleTimeString().slice(0,5)}` : 'Arraste para atualizar'}
+          </Text>
         </View>
         <TouchableOpacity onPress={() => togglePrivacyMode(!isPrivacyMode)} style={styles.privacyBtn}>
           <Ionicons name={isPrivacyMode ? "eye-off" : "eye"} size={22} color="#333" />
@@ -83,27 +138,31 @@ export default function DashboardScreen({ navigation }) {
       </View>
 
       <View style={styles.mainCard}>
-        <Text style={styles.mainCardLabel}>Total Investido</Text>
-        <Text style={styles.mainCardValue}>{formatCurrency(totalInvested)}</Text>
+        <Text style={styles.mainCardLabel}>Patrimônio Atual</Text>
+        <Text style={styles.mainCardValue}>{formatCurrency(currentPortfolioValue || totalInvested)}</Text>
         
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+            <Text style={{ color: '#ccc', fontSize: 14 }}>Rentabilidade: </Text>
+            <Text style={{ 
+                color: profitValue >= 0 ? '#4caf50' : '#ff5252', 
+                fontWeight: 'bold', fontSize: 16 
+            }}>
+                {isPrivacyMode ? '****' : `${profitValue >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%`}
+            </Text>
+        </View>
+
         {totalInvested > 0 ? (
           <>
             <View style={styles.progressBarContainer}>
               {allocationBreakdown.map(item => (
-                <View 
-                  key={item.type} 
-                  style={{ width: `${item.percent}%`, backgroundColor: item.color, height: '100%' }} 
-                />
+                <View key={item.type} style={{ width: `${item.percent}%`, backgroundColor: item.color, height: '100%' }} />
               ))}
             </View>
-            
             <View style={styles.legendContainer}>
               {allocationBreakdown.map(item => (
                 <View key={item.type} style={styles.legendItem}>
                   <View style={[styles.dot, { backgroundColor: item.color }]} />
-                  <Text style={styles.legendText}>
-                    {item.label}: {item.percent.toFixed(0)}%
-                  </Text>
+                  <Text style={styles.legendText}>{item.label}: {item.percent.toFixed(0)}%</Text>
                 </View>
               ))}
             </View>
@@ -113,24 +172,20 @@ export default function DashboardScreen({ navigation }) {
         )}
       </View>
 
-      <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Cadastrar')}>
-          <View style={[styles.iconCircle, { backgroundColor: '#e8f5e9' }]}>
-            <Ionicons name="add" size={24} color="#2e7d32" />
-          </View>
-          <Text style={styles.actionLabel}>Aportar</Text>
-        </TouchableOpacity>
+      <View style={styles.filtersContainer}>
+        {TIMEFRAMES.map((tf) => (
+          <TouchableOpacity 
+            key={tf.key} 
+            style={[styles.filterBtn, selectedTimeframe === tf.key && styles.filterBtnActive]}
+            onPress={() => setSelectedTimeframe(tf.key)}
+          >
+            <Text style={[styles.filterText, selectedTimeframe === tf.key && styles.filterTextActive]}>
+              {tf.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Posições')}>
-          <View style={[styles.iconCircle, { backgroundColor: '#e3f2fd' }]}>
-            <Ionicons name="list" size={24} color="#1565c0" />
-          </View>
-          <Text style={styles.actionLabel}>Detalhes</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionBtn} onPress={() => alert("Em breve: Relatórios avançados")}>
-          <View style={[styles.iconCircle, { backgroundColor: '#fff3e0' }]}>
-            <Ionicons name="stats-chart" size={24} color="#ef6c00" />
           </View>
           <Text style={styles.actionLabel}>Análise</Text>
         </TouchableOpacity>
