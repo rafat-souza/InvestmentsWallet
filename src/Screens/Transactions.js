@@ -191,14 +191,6 @@ export default function Transactions({ navigation }) {
           </View>
         </View>
 
-        <Text style={styles.label}>Data</Text>
-        <TextInput 
-          style={styles.input} 
-          value={date} 
-          onChangeText={setDate} 
-          placeholder="YYYY-MM-DD"
-        />
-
         <TouchableOpacity style={[styles.saveButton, operation === 'VENDA' ? styles.sellBtn : styles.buyBtn]} onPress={handleSave}>
           <Text style={styles.saveButtonText}>
             {operation === 'COMPRA' ? 'REGISTRAR APORTE' : 'REGISTRAR VENDA'}
