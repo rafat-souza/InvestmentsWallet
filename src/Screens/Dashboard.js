@@ -186,36 +186,54 @@ export default function DashboardScreen({ navigation }) {
         ))}
       </View>
 
+      <View style={styles.chartCard}>
+        <Text style={styles.chartTitle}>Evolução da Rentabilidade</Text>
+        
+        {positions.length > 0 ? (
+          <LineChart
+            data={chartData}
+            width={width - 50} 
+            height={220}
+            yAxisSuffix="%" 
+            chartConfig={{
+              backgroundColor: "#fff",
+              backgroundGradientFrom: "#fff",
+              backgroundGradientTo: "#fff",
+              decimalPlaces: 2,
+              color: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
+              propsForDots: { r: "5", strokeWidth: "2", stroke: profitPercent >= 0 ? "#2e7d32" : "#d32f2f" },
+              propsForBackgroundLines: { strokeDasharray: "" } 
+            }}
+            bezier 
+            style={{ marginVertical: 8, borderRadius: 16 }}
+            fromZero={true} 
+            hideLegend={true}
+          />
+        ) : (
+          <View style={{height: 100, justifyContent: 'center'}}>
+            <Text style={styles.emptyText}>Adicione ativos para ver o gráfico.</Text>
           </View>
-          <Text style={styles.actionLabel}>Análise</Text>
-        </TouchableOpacity>
+        )}
       </View>
-
       <Text style={styles.sectionTitle}>Últimas Movimentações</Text>
       {transactions.slice().reverse().slice(0, 5).map((item) => (
         <View key={item.id} style={styles.transactionItem}>
           <View style={[styles.transIconBox, {backgroundColor: item.operation === 'COMPRA' ? '#e8f5e9' : '#ffebee'}]}>
-             <Ionicons 
-               name={item.operation === 'COMPRA' ? 'arrow-down' : 'arrow-up'} 
-               size={18} 
-               color={item.operation === 'COMPRA' ? '#2e7d32' : '#d32f2f'} 
-             />
+             <Ionicons name={item.operation === 'COMPRA' ? 'arrow-down' : 'arrow-up'} size={18} color={item.operation === 'COMPRA' ? '#2e7d32' : '#d32f2f'} />
           </View>
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.transTicker}>{item.ticker}</Text>
             <Text style={styles.transType}>{item.type.toUpperCase()}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.transValue, { color: item.operation === 'COMPRA' ? '#333' : '#d32f2f' }]}>
-              {item.operation === 'COMPRA' ? '-' : '+'}{formatCurrency(item.total)}
-            </Text>
-            <Text style={styles.transDate}>{item.date}</Text>
+             <Text style={[styles.transValue, { color: item.operation === 'COMPRA' ? '#333' : '#d32f2f' }]}>
+               {item.operation === 'COMPRA' ? '-' : '+'}{formatCurrency(item.total)}
+             </Text>
+             <Text style={styles.transDate}>{item.date}</Text>
           </View>
         </View>
       ))}
-      {transactions.length === 0 && (
-        <Text style={styles.emptyText}>Nenhuma movimentação ainda.</Text>
-      )}
       <View style={{ height: 30 }} />
     </ScrollView>
   );
