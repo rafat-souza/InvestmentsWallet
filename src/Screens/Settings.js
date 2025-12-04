@@ -4,7 +4,7 @@ import { View, Text, Switch, TouchableOpacity, StyleSheet, Alert, Platform } fro
 import { WalletContext } from '../WalletContext';
 
 export default function Settings() {
-  const { isPrivacyMode, togglePrivacyMode, clearAllData } = useContext(WalletContext);
+  const { clearAllData } = useContext(WalletContext);
 
   const handleClear = () => {
     const title = "Atenção";
@@ -30,21 +30,9 @@ export default function Settings() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        <Text style={styles.label}>Modo Privacidade</Text>
-        <Switch 
-          value={isPrivacyMode} 
-          onValueChange={togglePrivacyMode}
-          trackColor={{ false: "#767577", true: "#a5d6a7" }}
-          thumbColor={isPrivacyMode ? "#2e7d32" : "#f4f3f4"}
-        />
-      </View>
-
       <TouchableOpacity style={styles.deleteButton} onPress={handleClear}>
         <Text style={styles.deleteText}>Limpar Todos os Dados</Text>
       </TouchableOpacity>
-    </View>
   );
 }
 
