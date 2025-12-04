@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { 
   View, Text, TextInput, StyleSheet, TouchableOpacity, 
   ActivityIndicator, ScrollView, Alert, KeyboardAvoidingView, Platform 
@@ -9,7 +9,7 @@ import { WalletContext } from '../WalletContext';
 import { getStockQuote, getCryptoQuote, searchAssets } from '../api';
 
 const ASSET_TYPES = [
-  { id: 'ação', label: 'Ação', icon: 'business' },
+  { id: 'stock', label: 'Ação', icon: 'business' },
   { id: 'bdr', label: 'BDR', icon: 'globe' },
   { id: 'etf', label: 'ETF', icon: 'layers' },
   { id: 'cripto', label: 'Cripto', icon: 'logo-bitcoin' },
@@ -24,12 +24,13 @@ export default function Transactions({ navigation }) {
   const [ticker, setTicker] = useState('');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date] = useState(new Date().toISOString().split('T')[0]);
   
   const [suggestions, setSuggestions] = useState([]);
   const [loadingPrice, setLoadingPrice] = useState(false);
 
   useEffect(() => {
+    if (!type) return;
     const delayDebounce = setTimeout(async () => {
       if (ticker.length >= 2) {
         const searchType = type === 'cripto' ? 'cripto' : 'stock';
@@ -71,6 +72,11 @@ export default function Transactions({ navigation }) {
   };
 
   const handleSave = () => {
+    if (!type) {
+      Alert.alert("Atenção", "Por favor, selecione o Tipo de Ativo (Ação, FII, Cripto, etc) antes de salvar.");
+      return;
+    }
+    
     if (!ticker || !quantity || !price) {
       Alert.alert("Erro", "Preencha todos os campos obrigatórios");
       return;
@@ -133,7 +139,7 @@ export default function Transactions({ navigation }) {
               <Ionicons 
                 name={item.icon} 
                 size={18} 
-                color={type === item.id ? '#fff' : '#666'} 
+                color={type === item.id ? '#fff' : '#667'} 
               />
               <Text style={[
                 styles.typeBtnText, 
@@ -144,8 +150,9 @@ export default function Transactions({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
-
-        <Text style={styles.label}>Código ({type.toUpperCase()})</Text>
+          
+        
+        <Text style={styles.label}>Código {type ? `(${type.toUpperCase()})` : ''}</Text>
         <TextInput 
           style={styles.input} 
           value={ticker} 
