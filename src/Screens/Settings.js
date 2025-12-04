@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { View, Text, Switch, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Switch, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 
 import { WalletContext } from '../WalletContext';
 
@@ -7,14 +7,26 @@ export default function Settings() {
   const { isPrivacyMode, togglePrivacyMode, clearAllData } = useContext(WalletContext);
 
   const handleClear = () => {
-    Alert.alert(
-      "Atenção",
-      "Isso apagará todas as suas movimentações e ativos. Tem certeza?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Apagar Tudo", onPress: clearAllData, style: "destructive" }
-      ]
-    );
+    const title = "Atenção";
+    const message = "Isso apagará todas as suas movimentações e ativos. Tem certeza?";
+
+    // Navegador (Web)
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+      if (confirmed) {
+        clearAllData();
+      }
+    } else {
+      // Android/iOS
+      Alert.alert(
+        title,
+        message,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Apagar Tudo", onPress: clearAllData, style: "destructive" }
+        ]
+      );
+    }
   };
 
   return (
@@ -23,7 +35,9 @@ export default function Settings() {
         <Text style={styles.label}>Modo Privacidade</Text>
         <Switch 
           value={isPrivacyMode} 
-          onValueChange={togglePrivacyMode} 
+          onValueChange={togglePrivacyMode}
+          trackColor={{ false: "#767577", true: "#a5d6a7" }}
+          thumbColor={isPrivacyMode ? "#2e7d32" : "#f4f3f4"}
         />
       </View>
 
@@ -36,8 +50,8 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
-  label: { fontSize: 18 },
-  deleteButton: { backgroundColor: '#ffebee', padding: 15, borderRadius: 8, alignItems: 'center' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  label: { fontSize: 18, color: '#333' },
+  deleteButton: { backgroundColor: '#ffebee', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 20 },
   deleteText: { color: '#d32f2f', fontWeight: 'bold', fontSize: 16 }
 });
