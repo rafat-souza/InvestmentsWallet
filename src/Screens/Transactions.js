@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { 
   View, Text, TextInput, StyleSheet, TouchableOpacity, 
-  ActivityIndicator, ScrollView, Alert, KeyboardAvoidingView, Platform 
+  ActivityIndicator, ScrollView, Alert, KeyboardAvoidingView, Platform, Keyboard 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -30,27 +30,48 @@ export default function Transactions({ navigation }) {
   const [loadingPrice, setLoadingPrice] = useState(false);
 
   useEffect(() => {
-    if (!type) return;
-    const delayDebounce = setTimeout(async () => {
-      if (ticker.length >= 2) {
-        const searchType = type === 'cripto' ? 'cripto' : 'stock';
-        const results = await searchAssets(ticker, searchType);
-        setSuggestions(results);
-      } else {
-        setSuggestions([]);
-      }
-    }, 500);
+    setSuggestions([]);
+  }, [type]);
 
-    return () => clearTimeout(delayDebounce);
+  useEffect(() => {
+    if (!ticker) {
+        setSuggestions([]);
+        return;
+    }
+    
+    if (suggestions.length === 0 && ticker.length >= 2) {
+        const delayDebounce = setTimeout(async () => {
+          const searchType = type === 'cripto' ? 'cripto' : 'stock';
+          try {
+              const results = await searchAssets(ticker, searchType);
+              setSuggestions(results);
+          } catch (error) {
+              console.log("Erro busca", error);
+          }
+        }, 500);
+        return () => clearTimeout(delayDebounce);
+    }
   }, [ticker, type]);
 
-  const handleSelectAsset = async (selectedTicker) => {
-    setTicker(selectedTicker);
-    setSuggestions([]);
-    fetchCurrentPrice(selectedTicker);
+  const handleSelectAsset = (item) => {
+    const code = item.stock || item.symbol || item;
+    
+    console.log("Selecionado (Raw):", item);
+    console.log("Selecionado (Code):", code); 
+
+    if (code) {
+        setTicker(code);     
+        setSuggestions([]);   
+        Keyboard.dismiss();    
+        fetchCurrentPrice(code); 
+    } else {
+        console.warn("Não foi possível identificar o código do ativo no item clicado.");
+    }
   };
 
   const fetchCurrentPrice = async (symbol) => {
+    if (!symbol) return;
+    
     setLoadingPrice(true);
     let data = null;
     
@@ -73,7 +94,7 @@ export default function Transactions({ navigation }) {
 
   const handleSave = () => {
     if (!type) {
-      Alert.alert("Atenção", "Por favor, selecione o Tipo de Ativo (Ação, FII, Cripto, etc) antes de salvar.");
+      Alert.alert("Atenção", "Por favor, selecione o Tipo de Ativo.");
       return;
     }
     
@@ -104,7 +125,10 @@ export default function Transactions({ navigation }) {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="always" 
+      >
         
         <View style={styles.toggleContainer}>
           <TouchableOpacity 
@@ -151,26 +175,36 @@ export default function Transactions({ navigation }) {
           ))}
         </View>
           
-        
-        <Text style={styles.label}>Código {type ? `(${type.toUpperCase()})` : ''}</Text>
-        <TextInput 
-          style={styles.input} 
-          value={ticker} 
-          onChangeText={setTicker} 
-          placeholder={type === 'cripto' ? "Ex: BTC" : "Ex: PETR4, IVVB11"}
-          autoCapitalize="characters"
-        />
-        
-        {suggestions.length > 0 && (
-          <View style={styles.suggestionsBox}>
-            {suggestions.map((item, index) => (
-              <TouchableOpacity key={index} style={styles.suggestionItem} onPress={() => handleSelectAsset(item.symbol)}>
-                <Text style={styles.suggestionText}>{item.symbol}</Text>
-                {item.name && <Text style={styles.suggestionSub}>{item.name}</Text>}
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+        <View style={{ zIndex: 100 }}> 
+            <Text style={styles.label}>Código {type ? `(${type.toUpperCase()})` : ''}</Text>
+            <TextInput 
+              style={styles.input} 
+              value={ticker} 
+              onChangeText={setTicker} 
+              placeholder={type === 'cripto' ? "Ex: BTC" : "Ex: PETR4, IVVB11"}
+              autoCapitalize="characters"
+            />
+            
+            {suggestions.length > 0 && (
+              <View style={styles.suggestionsBox}>
+                {suggestions.map((item, index) => {
+                  const displaySymbol = item.stock || item.symbol || "UNK"; 
+                  const displayName = item.name || "";
+
+                  return (
+                    <TouchableOpacity 
+                      key={index} 
+                      style={styles.suggestionItem} 
+                      onPress={() => handleSelectAsset(item)}
+                    >
+                      <Text style={styles.suggestionText}>{displaySymbol}</Text>
+                      {displayName ? <Text style={styles.suggestionSub} numberOfLines={1}>{displayName}</Text> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+        </View>
 
         <View style={styles.row}>
           <View style={styles.col}>
@@ -211,7 +245,7 @@ export default function Transactions({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scroll: { padding: 20 },
+  scroll: { padding: 20, paddingBottom: 100 },
   
   toggleContainer: { flexDirection: 'row', borderRadius: 8, overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: '#ddd' },
   toggleBtn: { flex: 1, padding: 15, alignItems: 'center', backgroundColor: '#f5f5f5' },
@@ -240,15 +274,31 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, color: '#666', marginBottom: 5, marginTop: 5 },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: '#fff', marginBottom: 10 },
   
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', zIndex: -1 }, 
   col: { width: '48%' },
   priceInputContainer: { flexDirection: 'row', alignItems: 'center' },
 
-  suggestionsBox: { backgroundColor: '#fff', elevation: 5, borderRadius: 8, marginTop: -5, marginBottom: 10, maxHeight: 150, zIndex: 10 },
-  suggestionItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  suggestionText: { fontWeight: 'bold', fontSize: 16 },
+  suggestionsBox: { 
+    position: 'absolute',
+    top: 75, 
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff', 
+    elevation: 8, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderRadius: 8, 
+    maxHeight: 180, 
+    zIndex: 9999, 
+    borderWidth: 1,
+    borderColor: '#eee'
+  },
+  suggestionItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  suggestionText: { fontWeight: 'bold', fontSize: 16, color: '#333' },
   suggestionSub: { fontSize: 12, color: '#888' },
 
-  saveButton: { padding: 18, borderRadius: 10, alignItems: 'center', marginTop: 20 },
+  saveButton: { padding: 18, borderRadius: 10, alignItems: 'center', marginTop: 40 },
   saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });
