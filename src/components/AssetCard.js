@@ -4,24 +4,23 @@ import { Ionicons } from '@expo/vector-icons';
 
 const getIcon = (type) => {
   switch (type) {
-    case 'cripto': return 'logo-bitcoin';
     case 'bdr': return 'globe';
     case 'etf': return 'layers';
-    default: return 'business';
+    default: return 'business'; // Ação (stock)
   }
 };
 
 const getTypeStyle = (type) => {
   switch (type) {
-    case 'cripto': return { backgroundColor: '#fbc02d' }; 
-    case 'bdr': return { backgroundColor: '#1976d2' }; 
+    case 'bdr': return { backgroundColor: '#1565c0' }; 
     case 'etf': return { backgroundColor: '#7b1fa2' }; 
-    default: return { backgroundColor: '#2e7d32' }; 
+    default: return { backgroundColor: '#2e7d32' }; // Ação (stock)
   }
 };
 
 export default function AssetCard({ item, isPrivacyMode }) {
-  const totalInvested = item.quantity * item.averagePrice;
+  const priceToUse = item.currentPrice || item.averagePrice;
+  const currentTotalValue = item.quantity * priceToUse;
 
   const formatCurrency = (value) => {
     if (isPrivacyMode) return 'R$ ****';
@@ -37,7 +36,7 @@ export default function AssetCard({ item, isPrivacyMode }) {
           </View>
           <View>
             <Text style={styles.ticker}>{item.ticker}</Text>
-            <Text style={styles.typeLabel}>{item.type.toUpperCase()}</Text>
+            <Text style={styles.typeLabel}>{item.type === 'stock' ? 'AÇÃO' : item.type.toUpperCase()}</Text>
           </View>
         </View>
         <Text style={styles.quantity}>{item.quantity} un</Text>
@@ -47,12 +46,12 @@ export default function AssetCard({ item, isPrivacyMode }) {
 
       <View style={styles.statsRow}>
         <View>
-          <Text style={styles.label}>Preço Médio</Text>
-          <Text style={styles.value}>{formatCurrency(item.averagePrice)}</Text>
+          <Text style={styles.label}>Preço Atual</Text>
+          <Text style={styles.value}>{formatCurrency(priceToUse)}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.label}>Custo Total</Text>
-          <Text style={styles.valueBold}>{formatCurrency(totalInvested)}</Text>
+          <Text style={styles.label}>Valor em Carteira</Text>
+          <Text style={styles.valueBold}>{formatCurrency(currentTotalValue)}</Text>
         </View>
       </View>
     </View>
