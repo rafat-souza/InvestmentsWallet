@@ -15,6 +15,7 @@ const ASSET_TYPES = [
 ];
 
 export default function Transactions({ navigation }) {
+  {/* constantes principais */}
   const { addTransaction } = useContext(WalletContext);
 
   const [type, setType] = useState('stock'); 
@@ -114,6 +115,7 @@ export default function Transactions({ navigation }) {
       return;
     }
 
+    // Atributos da transação
     const transaction = {
       id: Date.now().toString(),
       type: type, 
@@ -186,6 +188,8 @@ export default function Transactions({ navigation }) {
           ))}
         </View>
           
+
+          {/* Campos para cadastro da transação */}
         <View style={{ zIndex: 100 }}> 
             <Text style={styles.label}>Código {type ? `(${type.toUpperCase()})` : ''}</Text>
             <TextInput 
@@ -243,6 +247,7 @@ export default function Transactions({ navigation }) {
           </View>
         </View>
 
+        {/* Confirmar */}
         <TouchableOpacity style={[styles.saveButton, operation === 'VENDA' ? styles.sellBtn : styles.buyBtn]} onPress={handleSave}>
           <Text style={styles.saveButtonText}>
             {operation === 'COMPRA' ? 'REGISTRAR APORTE' : 'REGISTRAR VENDA'}
