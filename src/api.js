@@ -14,7 +14,7 @@ export const getAssetQuote = async (ticker) => {
   try {
     const response = await api.get(`/quote/${ticker}`);
     if (response.data && response.data.results) {
-      return response.data.results; // Retorna array de resultados
+      return response.data.results; 
     }
     return [];
   } catch (error) {
@@ -23,7 +23,7 @@ export const getAssetQuote = async (ticker) => {
   }
 };
 
-// Busca para o autocomplete
+
 export const searchAssets = async (term) => {
   if (!term || term.length < 2) return [];
 
@@ -51,21 +51,21 @@ export const searchAssets = async (term) => {
   }
 };
 
-// Histórico: Busca individualmente para garantir integridade dos dados no gráfico
+
 export const getHistoricalData = async (tickers, range = '1mo', interval = '1d') => {
   if (!tickers || tickers.length === 0) return [];
 
   try {
-    // Fazemos chamadas paralelas para cada ativo para pegar o histórico detalhado
+    
     const requests = tickers.map(ticker => 
       api.get(`/quote/${ticker}`, {
         params: { range, interval }
-      }).catch(err => null) // Se um falhar, não quebra os outros
+      }).catch(err => null) 
     );
 
     const responses = await Promise.all(requests);
     
-    // Filtra e normaliza os resultados
+    
     const results = responses
       .filter(r => r && r.data && r.data.results && r.data.results.length > 0)
       .map(r => r.data.results[0]);

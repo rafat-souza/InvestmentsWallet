@@ -87,11 +87,11 @@ export const WalletProvider = ({ children }) => {
     const positionsArray = Object.values(port).filter(p => p.quantity > 0);
     setPositions(positionsArray);
     
-    // Chama refreshPrices passando o array calculado para atualizar valores de mercado
+    
     refreshPrices(positionsArray);
   };
 
-  // --- CORREÇÃO PRINCIPAL: BUSCA EM LOTE ---
+  
   const refreshPrices = async (currentPositions = positions) => {
     if (currentPositions.length === 0) {
       setCurrentPortfolioValue(0);
@@ -99,13 +99,13 @@ export const WalletProvider = ({ children }) => {
     }
 
     try {
-      // Cria string com todos os tickers: "PETR4,VALE3,IVVB11"
+      
       const tickers = currentPositions.map(p => p.ticker).join(',');
       
-      // Busca todos de uma vez
+      
       const quotes = await getAssetQuote(tickers);
       
-      // Cria um mapa para acesso rápido: { 'PETR4': 35.50, 'VALE3': 60.20 }
+      
       const priceMap = {};
       quotes.forEach(q => {
         priceMap[q.symbol] = q.regularMarketPrice;
@@ -114,7 +114,7 @@ export const WalletProvider = ({ children }) => {
       let totalCurrentValue = 0;
 
       const updatedPositions = currentPositions.map(pos => {
-        // Se a API retornou preço, usa. Senão, mantém o preço médio (fallback)
+        
         const marketPrice = priceMap[pos.ticker] || pos.averagePrice;
         
         totalCurrentValue += (pos.quantity * marketPrice);
