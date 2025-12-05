@@ -9,69 +9,43 @@ const api = axios.create({
   },
 });
 
-export const getAssetQuote = async (ticker) => {
+export const getStockQuote = async (ticker) => {
   try {
     const response = await api.get(`/quote/${ticker}`);
-    if (response.data && response.data.results) {
-      return response.data.results; 
+    if (response.data && response.data.results && response.data.results.length > 0) {
+      return response.data.results[0];
     }
-    return [];
+    return null;
   } catch (error) {
-    console.error(`Erro ao buscar ativos: ${ticker}`, error);
-    return [];
+    console.error(`Erro ao buscar ação ${ticker}:`, error);
+    return null;
   }
 };
 
-export const searchAssets = async (term) => {
+export const searchAssets = async (term, type = 'stock') => {
   if (!term || term.length < 2) return [];
 
   try {
-    const response = await api.get('/quote/list', {
-      params: {
-        search: term,
-        limit: 10,
-        sortBy: 'volume',
-        sortOrder: 'desc'
-      }
-    });
-    
-    const stocks = response.data.stocks || [];
-    
-    return stocks.map(stockItem => ({
-      ...stockItem,
-      symbol: stockItem.stock,
-      price: stockItem.close,
-    }));
-
+    if (type === 'cripto') {
+      const response = await api.get('/v2/crypto/available', {
+        params: { search: term }
+      });
+      return response.data.coins.slice(0, 10).map(c => ({ symbol: c, type: 'cripto' }));
+    } else {
+      const response = await api.get('/quote/list', {
+        params: {
+          search: term,
+          limit: 10,
+          sortBy: 'volume',
+          sortOrder: 'desc'
+        }
+      });
+      return response.data.stocks || [];
+    }
   } catch (error) {
     console.error("Erro na busca:", error);
     return [];
   }
-};
-
-export const getHistoricalData = async (tickers, range = '1mo', interval = '1d') => {
-  if (!tickers || tickers.length === 0) return [];
-
-  const results = [];
-
-  for (const ticker of tickers) {
-    try {
-      const response = await api.get(`/quote/${ticker}`, {
-        params: { range, interval }
-      });
-
-      if (response.data && response.data.results && response.data.results.length > 0) {
-        results.push(response.data.results[0]);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-    } catch (error) {
-      console.error(`Erro ao buscar histórico de ${ticker}:`, error.message);
-    }
-  }
-
-  return results;
 };
 
 export default api;

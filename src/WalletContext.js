@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { getAssetQuote } from './api';
+import { getStockQuote, getCryptoQuote } from './api';
 
 export const WalletContext = createContext({});
 
@@ -36,9 +36,12 @@ export const WalletProvider = ({ children }) => {
   const addTransaction = async (newTransaction) => {
     try {
       const updatedTransactions = [...transactions, newTransaction];
+      
       setTransactions(updatedTransactions);
       await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTransactions));
+      
       recalculatePortfolio(updatedTransactions);
+
     } catch (e) {
       console.error("Erro ao salvar transação", e);
     }
@@ -49,6 +52,7 @@ export const WalletProvider = ({ children }) => {
 
     allTransactions.forEach(tx => {
       const ticker = tx.ticker;
+      
       if (!port[ticker]) {
         port[ticker] = {
           ticker: ticker,
@@ -56,6 +60,8 @@ export const WalletProvider = ({ children }) => {
           quantity: 0,
           averagePrice: 0,
           totalInvested: 0,
+          currentPrice: 0,     // Inicializa zerado
+          profitPercent: 0     // Inicializa zerado
         };
       }
 
@@ -64,20 +70,30 @@ export const WalletProvider = ({ children }) => {
       if (tx.operation === 'COMPRA') {
         const currentTotalValue = current.quantity * current.averagePrice;
         const newPurchaseValue = tx.quantity * tx.price;
+        
         const newTotalQty = current.quantity + tx.quantity;
         
         if (newTotalQty > 0) {
           current.averagePrice = (currentTotalValue + newPurchaseValue) / newTotalQty;
         }
+        
         current.quantity = newTotalQty;
         current.totalInvested += newPurchaseValue;
+        
+        // Se é a primeira compra, define preço atual como preço pago para não mostrar -100%
+        if (current.currentPrice === 0) {
+            current.currentPrice = tx.price;
+        }
 
       } else if (tx.operation === 'VENDA') {
         current.quantity -= tx.quantity;
+        
         if (current.quantity <= 0) {
           current.quantity = 0;
           current.totalInvested = 0;
           current.averagePrice = 0;
+          current.currentPrice = 0;
+          current.profitPercent = 0;
         } else {
           current.totalInvested = current.quantity * current.averagePrice;
         }
@@ -86,52 +102,56 @@ export const WalletProvider = ({ children }) => {
 
     const positionsArray = Object.values(port).filter(p => p.quantity > 0);
     setPositions(positionsArray);
+
+    // Calcula valor inicial (enquanto API não responde)
+    const initialTotal = positionsArray.reduce((acc, item) => acc + (item.quantity * item.currentPrice), 0);
+    setCurrentPortfolioValue(initialTotal);
     
-    
+    // Dispara atualização de preços
     refreshPrices(positionsArray);
   };
 
-  
   const refreshPrices = async (currentPositions = positions) => {
-    if (currentPositions.length === 0) {
-      setCurrentPortfolioValue(0);
-      return;
-    }
+    if (currentPositions.length === 0) return;
 
-    try {
+    let totalCurrentValue = 0;
+    
+    const updatedPositions = await Promise.all(currentPositions.map(async (pos) => {
+      let currentPrice = pos.currentPrice || pos.averagePrice; 
       
-      const tickers = currentPositions.map(p => p.ticker).join(',');
-      
-      
-      const quotes = await getAssetQuote(tickers);
-      
-      
-      const priceMap = {};
-      quotes.forEach(q => {
-        priceMap[q.symbol] = q.regularMarketPrice;
-      });
-
-      let totalCurrentValue = 0;
-
-      const updatedPositions = currentPositions.map(pos => {
+      try {
+        let data = null;
+        if (pos.type === 'cripto') {
+          data = await getCryptoQuote(pos.ticker);
+        } else {
+          data = await getStockQuote(pos.ticker);
+        }
         
-        const marketPrice = priceMap[pos.ticker] || pos.averagePrice;
-        
-        totalCurrentValue += (pos.quantity * marketPrice);
+        if (data && (data.regularMarketPrice || data.price)) {
+            currentPrice = data.regularMarketPrice || data.price;
+        }
+      } catch (error) {
+        console.log(`Erro ao atualizar ${pos.ticker}`, error);
+      }
 
-        return { 
+      // Calcula rentabilidade individual
+      let profitPercent = 0;
+      if (pos.averagePrice > 0) {
+          profitPercent = ((currentPrice - pos.averagePrice) / pos.averagePrice) * 100;
+      }
+
+      totalCurrentValue += (pos.quantity * currentPrice);
+      
+      return { 
           ...pos, 
-          currentPrice: marketPrice 
-        };
-      });
+          currentPrice, 
+          profitPercent // Salva a rentabilidade no objeto
+      };
+    }));
 
-      setPositions(updatedPositions);
-      setCurrentPortfolioValue(totalCurrentValue);
-      setLastUpdate(new Date());
-
-    } catch (e) {
-      console.log("Erro ao atualizar preços em lote", e);
-    }
+    setPositions(updatedPositions);
+    setCurrentPortfolioValue(totalCurrentValue);
+    setLastUpdate(new Date());
   };
 
   const togglePrivacyMode = async (value) => {

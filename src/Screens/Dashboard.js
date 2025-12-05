@@ -145,23 +145,20 @@ export default function DashboardScreen({ navigation }) {
       </View>
 
       <View style={styles.mainCard}>
-        <Text style={styles.mainCardLabel}>Patrimônio Total</Text>
-        <Text style={styles.mainCardValue}>{formatCurrency(currentPortfolioValue)}</Text>
+        <Text style={styles.mainCardLabel}>Patrimônio Atual</Text>
+        <Text style={styles.mainCardValue}>{formatCurrency(currentPortfolioValue || totalInvested)}</Text>
         
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-            <Text style={{ color: '#ccc', fontSize: 14 }}>Rentabilidade da Carteira: </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+            <Text style={{ color: '#ccc', fontSize: 14 }}>Rentabilidade: </Text>
             <Text style={{ 
-                color: getProfitColor(profitPercent), 
+                color: profitValue >= 0 ? '#4caf50' : '#ff5252', 
                 fontWeight: 'bold', fontSize: 16 
             }}>
-                {formatPercent(profitPercent)}
+                {isPrivacyMode ? '****' : `${profitValue >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%`}
             </Text>
         </View>
-        <Text style={{ color: '#888', fontSize: 12 }}>
-           {isPrivacyMode ? '' : `(R$ ${profitValue >= 0 ? '+' : ''}${profitValue.toLocaleString('pt-BR', {minimumFractionDigits: 2})})`}
-        </Text>
 
-        {currentPortfolioValue > 0 && (
+        {totalInvested > 0 ? (
           <>
             <View style={styles.progressBarContainer}>
               {allocationBreakdown.map(item => (
@@ -177,6 +174,8 @@ export default function DashboardScreen({ navigation }) {
               ))}
             </View>
           </>
+        ) : (
+            <Text style={styles.emptyCardText}>Faça seu primeiro aporte para ver a alocação.</Text>
         )}
       </View>
 
@@ -240,14 +239,13 @@ export default function DashboardScreen({ navigation }) {
                 <View style={[styles.colorIndicator, {backgroundColor: TYPE_COLORS[pos.type] || TYPE_COLORS['stock']}]} />
                 <View>
                   <Text style={styles.assetTicker}>{pos.ticker}</Text>
-                  <Text style={styles.assetSub}>PM: {formatCurrency(pos.averagePrice)}</Text>
+                  <Text style={styles.assetSub}>Preço Médio: {formatCurrency(pos.averagePrice)}</Text>
                 </View>
               </View>
               <View style={{alignItems: 'flex-end'}}>
                 <Text style={{ fontWeight: 'bold', color: getProfitColor(gain), fontSize: 16 }}>
                   {formatPercent(gain)}
                 </Text>
-                <Text style={styles.assetSub}>Atual: {formatCurrency(currentP)}</Text>
               </View>
             </View>
           );

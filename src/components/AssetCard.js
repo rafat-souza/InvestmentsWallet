@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -46,7 +45,7 @@ export default function AssetCard({ item, isPrivacyMode }) {
 
       <View style={styles.statsRow}>
         <View>
-          <Text style={styles.label}>Preço Atual</Text>
+          <Text style={styles.label}>Preço Médio</Text>
           <Text style={styles.value}>{formatCurrency(priceToUse)}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
