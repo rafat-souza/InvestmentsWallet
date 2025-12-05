@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function About() {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
         <View style={styles.iconContainer}>
           <Ionicons name="pie-chart" size={60} color="#2e7d32" />
@@ -28,7 +29,7 @@ export default function About() {
         <Text style={styles.footerText}>Desenvolvido por Rafael Toledo e Pedro Silveira</Text>
         <Text style={styles.footerText}>Trabalho final 2025</Text>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
