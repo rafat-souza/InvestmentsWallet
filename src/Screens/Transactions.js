@@ -15,7 +15,6 @@ const ASSET_TYPES = [
 ];
 
 export default function Transactions({ navigation }) {
-  {/* constantes principais */}
   const { addTransaction, positions } = useContext(WalletContext);
 
   const [type, setType] = useState('stock'); 
@@ -28,6 +27,7 @@ export default function Transactions({ navigation }) {
   
   const [suggestions, setSuggestions] = useState([]);
   const [loadingPrice, setLoadingPrice] = useState(false);
+  const [saving, setSaving] = useState(false); 
 
   useEffect(() => {
     setSuggestions([]);
@@ -39,9 +39,9 @@ export default function Transactions({ navigation }) {
         return;
     }
     
+    // Evita buscar se já selecionamos (se o input for igual ao último selecionado)
     if (suggestions.length === 0 && ticker.length >= 2) {
         const delayDebounce = setTimeout(async () => {
-          // Passa o tipo corretamente para a busca
           const searchType = type === 'cripto' ? 'cripto' : 'stock';
           try {
               const results = await searchAssets(ticker, searchType);
@@ -61,7 +61,6 @@ export default function Transactions({ navigation }) {
 
     if (item.type) {
       const itemType = item.type.toLowerCase();
-      // Brapi retorna 'fund' para ETFs e FIIs
       if (itemType === 'fund' || itemType === 'etf') {
         setType('etf');
       } else if (itemType === 'bdr') {
@@ -104,7 +103,7 @@ export default function Transactions({ navigation }) {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!type) {
       Alert.alert("Atenção", "Por favor, selecione o Tipo de Ativo.");
       return;
@@ -115,54 +114,86 @@ export default function Transactions({ navigation }) {
       return;
     }
 
-    const tickerUpper = ticker.toUpperCase().trim();
-    const qtyFloat = parseFloat(quantity.replace(',', '.'));
-    const priceFloat = parseFloat(price.replace(',', '.'));
+    setSaving(true); // Ativa o loading no botão
 
-    if (isNaN(qtyFloat) || qtyFloat <= 0) {
-      Alert.alert("Erro", "Quantidade inválida.");
-      return;
+    try {
+        const tickerUpper = ticker.toUpperCase().trim();
+        const qtyFloat = parseFloat(quantity.replace(',', '.'));
+        const priceFloat = parseFloat(price.replace(',', '.'));
+
+        if (isNaN(qtyFloat) || qtyFloat <= 0) {
+            Alert.alert("Erro", "Quantidade inválida.");
+            setSaving(false);
+            return;
+        }
+
+        // Verifica se o ativo realmente existe na API antes de prosseguir
+        let isValidAsset = false;
+        
+        if (type === 'cripto') {
+            const check = await getCryptoQuote(tickerUpper);
+            if (check) isValidAsset = true;
+        } else {
+            const check = await getStockQuote(tickerUpper);
+            if (check) isValidAsset = true;
+        }
+
+        if (!isValidAsset) {
+            Alert.alert(
+                "Ativo Não Encontrado", 
+                `O código "${tickerUpper}" não foi encontrado na base de dados. Verifique se o código está correto.`
+            );
+            setSaving(false);
+            return; // Bloqueia o salvamento
+        }
+
+        // Validação de saldo para venda
+        if (operation === 'VENDA') {
+            const position = positions.find(p => p.ticker === tickerUpper);
+
+            if (!position) {
+                Alert.alert(
+                "Operação Inválida", 
+                `Você não possui o ativo ${tickerUpper} na sua carteira para vender.`
+                );
+                setSaving(false);
+                return;
+            }
+
+            if (qtyFloat > position.quantity) {
+                Alert.alert(
+                "Saldo Insuficiente", 
+                `Você possui apenas ${position.quantity} unidades de ${tickerUpper}. Não é possível vender ${qtyFloat}.`
+                );
+                setSaving(false);
+                return;
+            }
+        }
+
+        // Atributos da transação
+        const transaction = {
+            id: Date.now().toString(),
+            type: type, 
+            operation, 
+            ticker: tickerUpper,
+            quantity: qtyFloat,
+            price: priceFloat,
+            date,
+            total: qtyFloat * priceFloat
+        };
+
+        addTransaction(transaction);
+        
+        Alert.alert("Sucesso", `${type.toUpperCase()} registrada com sucesso!`, [
+            { text: "OK", onPress: () => navigation.goBack() }
+        ]);
+
+    } catch (error) {
+        console.log("Erro ao salvar", error);
+        Alert.alert("Erro", "Ocorreu um erro ao validar a transação.");
+    } finally {
+        setSaving(false); // Desativa o loading
     }
-
-    if (operation === 'VENDA') {
-      // Busca se o ativo existe na carteira do usuário
-      const position = positions.find(p => p.ticker === tickerUpper);
-
-      // Verifica se o usuário tem o ativo
-      if (!position) {
-        Alert.alert(
-          "Operação Inválida", 
-          `Você não possui o ativo ${tickerUpper} na sua carteira para vender.`
-        );
-        return;
-      }
-
-      // Verifica se o saldo é suficiente
-      if (qtyFloat > position.quantity) {
-        Alert.alert(
-          "Saldo Insuficiente", 
-          `Você possui apenas ${position.quantity} unidades de ${tickerUpper}. Não é possível vender ${qtyFloat}.`
-        );
-        return;
-      }
-    }
-
-    // Atributos da transação
-    const transaction = {
-      id: Date.now().toString(),
-      type: type, 
-      operation, 
-      ticker: ticker.toUpperCase(),
-      quantity: parseFloat(quantity.replace(',', '.')),
-      price: parseFloat(price.replace(',', '.')),
-      date,
-      total: parseFloat(quantity.replace(',', '.')) * parseFloat(price.replace(',', '.'))
-    };
-
-    addTransaction(transaction);
-    Alert.alert("Sucesso", `${type.toUpperCase()} registrada com sucesso!`, [
-      { text: "OK", onPress: () => navigation.goBack() }
-    ]);
   };
 
   return (
@@ -220,8 +251,6 @@ export default function Transactions({ navigation }) {
           ))}
         </View>
           
-
-          {/* Campos para cadastro da transação */}
         <View style={{ zIndex: 100 }}> 
             <Text style={styles.label}>Código {type ? `(${type.toUpperCase()})` : ''}</Text>
             <TextInput 
@@ -279,11 +308,22 @@ export default function Transactions({ navigation }) {
           </View>
         </View>
 
-        {/* Confirmar */}
-        <TouchableOpacity style={[styles.saveButton, operation === 'VENDA' ? styles.sellBtn : styles.buyBtn]} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>
-            {operation === 'COMPRA' ? 'REGISTRAR APORTE' : 'REGISTRAR VENDA'}
-          </Text>
+        <TouchableOpacity 
+            style={[
+                styles.saveButton, 
+                operation === 'VENDA' ? styles.sellBtn : styles.buyBtn,
+                saving && { opacity: 0.7 }
+            ]} 
+            onPress={handleSave}
+            disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>
+                {operation === 'COMPRA' ? 'REGISTRAR APORTE' : 'REGISTRAR VENDA'}
+            </Text>
+          )}
         </TouchableOpacity>
 
       </ScrollView>
