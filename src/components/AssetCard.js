@@ -6,7 +6,7 @@ const getIcon = (type) => {
   switch (type) {
     case 'bdr': return 'globe';
     case 'etf': return 'layers';
-    default: return 'business'; // Ação (stock)
+    default: return 'business'; 
   }
 };
 
@@ -14,7 +14,7 @@ const getTypeStyle = (type) => {
   switch (type) {
     case 'bdr': return { backgroundColor: '#1565c0' }; 
     case 'etf': return { backgroundColor: '#7b1fa2' }; 
-    default: return { backgroundColor: '#2e7d32' }; // Ação (stock)
+    default: return { backgroundColor: '#2e7d32' }; 
   }
 };
 

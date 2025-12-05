@@ -29,11 +29,11 @@ export default function DashboardScreen({ navigation }) {
     return positions.reduce((acc, item) => acc + (item.quantity * item.averagePrice), 0);
   }, [positions]);
 
-  // 2. Rentabilidade Atual (Topo do Card) - Comparação: Valor Atual vs Custo
+  // 2. Rentabilidade Atual - Comparação: Valor Atual vs Custo
   const profitValue = currentPortfolioValue - totalInvestedCost;
   const profitPercent = totalInvestedCost > 0 ? (profitValue / totalInvestedCost) * 100 : 0;
 
-  // --- LÓGICA DE GERAÇÃO DO GRÁFICO ---
+  // 
   const fetchChartData = async () => {
     if (positions.length === 0) {
       setChartData(null);
@@ -52,7 +52,7 @@ export default function DashboardScreen({ navigation }) {
         return;
       }
 
-      // -- PASSO A: Mapear histórico por ativo --
+      // 
       const assetHistoryMap = {}; 
       const allDatesSet = new Set();
 
@@ -80,14 +80,13 @@ export default function DashboardScreen({ navigation }) {
       const dataPoints = [];
       const labels = [];
       
-      // Controla a quantidade de labels no eixo X
+      
       const labelInterval = Math.ceil(sortedDates.length / 5);
 
-      // -- PASSO B: Construir a linha do tempo da carteira (Soma dos ativos) --
-      // Variável para guardar o último preço conhecido de cada ativo (Fill Forward)
+     
       const lastKnownPrices = {}; 
 
-      // Inicializa lastKnownPrices com o preço médio (fallback inicial)
+    
       positions.forEach(p => {
         lastKnownPrices[p.ticker] = p.averagePrice;
       });
@@ -110,26 +109,26 @@ export default function DashboardScreen({ navigation }) {
           dailyPortfolioValue += (priceToUse * pos.quantity);
         });
 
-        // -- PASSO C: Calcular Rentabilidade % --
+        // Calcular Rentabilidade % 
         // Fórmula: ((ValorTotalDia - CustoTotal) / CustoTotal) * 100
         let percentage = 0;
         if (totalInvestedCost > 0) {
           percentage = ((dailyPortfolioValue - totalInvestedCost) / totalInvestedCost) * 100;
         }
 
-        // Proteção contra Infinity/NaN
+        
         if (!isFinite(percentage)) percentage = 0;
 
         dataPoints.push(percentage);
 
-        // Formatação da Label (Data)
+        
         if (index % labelInterval === 0 || index === sortedDates.length - 1) {
           const d = new Date(dateKey * 1000);
           const day = d.getDate().toString().padStart(2, '0');
           const month = (d.getMonth() + 1).toString().padStart(2, '0');
           labels.push(`${day}/${month}`);
         } else {
-          labels.push(''); // Label vazia para manter alinhamento
+          labels.push(''); 
         }
       });
 
@@ -170,7 +169,7 @@ export default function DashboardScreen({ navigation }) {
 
   const getProfitColor = (val) => val >= 0 ? '#4caf50' : '#f44336';
 
-  // Lógica de Alocação (Pizza/Barra)
+  
   const allocationBreakdown = useMemo(() => {
     let breakdown = { stock: 0, bdr: 0, etf: 0 };
     positions.forEach(p => {
@@ -209,7 +208,7 @@ export default function DashboardScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Main Card */}
+  
       <View style={styles.mainCard}>
         <Text style={styles.mainCardLabel}>Patrimônio Total</Text>
         <Text style={styles.mainCardValue}>{formatCurrency(currentPortfolioValue)}</Text>
