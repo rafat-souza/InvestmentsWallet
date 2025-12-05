@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_TOKEN = process.env.EXPO_PUBLIC_BRAPI_TOKEN;
+const API_TOKEN = '9UHJzxmSBvyQFC1LVDJa9S';
 
 const api = axios.create({
   baseURL: 'https://brapi.dev/api',
@@ -9,66 +9,70 @@ const api = axios.create({
   },
 });
 
-export const getStockQuote = async (ticker) => {
+// Busca cotação atual (Suporta múltiplos tickers ex: "PETR4,VALE3")
+export const getAssetQuote = async (ticker) => {
   try {
     const response = await api.get(`/quote/${ticker}`);
-    if (response.data && response.data.results && response.data.results.length > 0) {
-      return response.data.results[0];
+    if (response.data && response.data.results) {
+      return response.data.results; // Retorna array de resultados
     }
-    return null;
+    return [];
   } catch (error) {
-    console.error(`Erro ao buscar ação ${ticker}:`, error);
-    return null;
+    console.error(`Erro ao buscar ativos: ${ticker}`, error);
+    return [];
   }
 };
 
-export const getCryptoQuote = async (coin) => {
-  try {
-    const response = await api.get('/v2/crypto', {
-      params: {
-        coin: coin.toUpperCase(),
-        currency: 'BRL'
-      }
-    });
-    
-    if (response.data && response.data.coins && response.data.coins.length > 0) {
-      const data = response.data.coins[0];
-      return {
-        symbol: data.coin,
-        shortName: data.coinName,
-        regularMarketPrice: data.regularMarketPrice,
-        logourl: data.coinImageUrl 
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error(`Erro ao buscar cripto ${coin}:`, error);
-    return null;
-  }
-};
-
-export const searchAssets = async (term, type = 'stock') => {
+// Busca para o autocomplete
+export const searchAssets = async (term) => {
   if (!term || term.length < 2) return [];
 
   try {
-    if (type === 'cripto') {
-      const response = await api.get('/v2/crypto/available', {
-        params: { search: term }
-      });
-      return response.data.coins.slice(0, 10).map(c => ({ symbol: c, type: 'cripto' }));
-    } else {
-      const response = await api.get('/quote/list', {
-        params: {
-          search: term,
-          limit: 10,
-          sortBy: 'volume',
-          sortOrder: 'desc'
-        }
-      });
-      return response.data.stocks || [];
-    }
+    const response = await api.get('/quote/list', {
+      params: {
+        search: term,
+        limit: 10,
+        sortBy: 'volume',
+        sortOrder: 'desc'
+      }
+    });
+    
+    const stocks = response.data.stocks || [];
+    
+    return stocks.map(stockItem => ({
+      ...stockItem,
+      symbol: stockItem.stock,
+      price: stockItem.close,
+    }));
+
   } catch (error) {
     console.error("Erro na busca:", error);
+    return [];
+  }
+};
+
+// Histórico: Busca individualmente para garantir integridade dos dados no gráfico
+export const getHistoricalData = async (tickers, range = '1mo', interval = '1d') => {
+  if (!tickers || tickers.length === 0) return [];
+
+  try {
+    // Fazemos chamadas paralelas para cada ativo para pegar o histórico detalhado
+    const requests = tickers.map(ticker => 
+      api.get(`/quote/${ticker}`, {
+        params: { range, interval }
+      }).catch(err => null) // Se um falhar, não quebra os outros
+    );
+
+    const responses = await Promise.all(requests);
+    
+    // Filtra e normaliza os resultados
+    const results = responses
+      .filter(r => r && r.data && r.data.results && r.data.results.length > 0)
+      .map(r => r.data.results[0]);
+
+    return results;
+  } catch (error) {
+    console.error("Erro ao buscar histórico:", error);
     return [];
   }
 };
