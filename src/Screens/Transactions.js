@@ -40,7 +40,8 @@ export default function Transactions({ navigation }) {
     
     if (suggestions.length === 0 && ticker.length >= 2) {
         const delayDebounce = setTimeout(async () => {
-          const searchType = type === 'stock';
+          // Passa o tipo corretamente para a busca
+          const searchType = type === 'cripto' ? 'cripto' : 'stock';
           try {
               const results = await searchAssets(ticker, searchType);
               setSuggestions(results);
@@ -55,8 +56,19 @@ export default function Transactions({ navigation }) {
   const handleSelectAsset = (item) => {
     const code = item.stock || item.symbol || item;
     
-    console.log("Selecionado (Raw):", item);
     console.log("Selecionado (Code):", code); 
+
+    if (item.type) {
+      const itemType = item.type.toLowerCase();
+      // Brapi retorna 'fund' para ETFs e FIIs
+      if (itemType === 'fund' || itemType === 'etf') {
+        setType('etf');
+      } else if (itemType === 'bdr') {
+        setType('bdr');
+      } else if (itemType === 'stock') {
+        setType('stock');
+      }
+    }
 
     if (code) {
         setTicker(code);     

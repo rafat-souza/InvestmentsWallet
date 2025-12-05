@@ -60,8 +60,8 @@ export const WalletProvider = ({ children }) => {
           quantity: 0,
           averagePrice: 0,
           totalInvested: 0,
-          currentPrice: 0,     // Inicializa zerado
-          profitPercent: 0     // Inicializa zerado
+          currentPrice: 0,  
+          profitPercent: 0    
         };
       }
 
@@ -80,7 +80,6 @@ export const WalletProvider = ({ children }) => {
         current.quantity = newTotalQty;
         current.totalInvested += newPurchaseValue;
         
-        // Se é a primeira compra, define preço atual como preço pago para não mostrar -100%
         if (current.currentPrice === 0) {
             current.currentPrice = tx.price;
         }
@@ -103,11 +102,9 @@ export const WalletProvider = ({ children }) => {
     const positionsArray = Object.values(port).filter(p => p.quantity > 0);
     setPositions(positionsArray);
 
-    // Calcula valor inicial (enquanto API não responde)
     const initialTotal = positionsArray.reduce((acc, item) => acc + (item.quantity * item.currentPrice), 0);
     setCurrentPortfolioValue(initialTotal);
     
-    // Dispara atualização de preços
     refreshPrices(positionsArray);
   };
 
@@ -134,7 +131,6 @@ export const WalletProvider = ({ children }) => {
         console.log(`Erro ao atualizar ${pos.ticker}`, error);
       }
 
-      // Calcula rentabilidade individual
       let profitPercent = 0;
       if (pos.averagePrice > 0) {
           profitPercent = ((currentPrice - pos.averagePrice) / pos.averagePrice) * 100;
@@ -145,7 +141,7 @@ export const WalletProvider = ({ children }) => {
       return { 
           ...pos, 
           currentPrice, 
-          profitPercent // Salva a rentabilidade no objeto
+          profitPercent 
       };
     }));
 
