@@ -16,7 +16,7 @@ const ASSET_TYPES = [
 
 export default function Transactions({ navigation }) {
   {/* constantes principais */}
-  const { addTransaction } = useContext(WalletContext);
+  const { addTransaction, positions } = useContext(WalletContext);
 
   const [type, setType] = useState('stock'); 
   const [operation, setOperation] = useState('COMPRA');
@@ -113,6 +113,38 @@ export default function Transactions({ navigation }) {
     if (!ticker || !quantity || !price) {
       Alert.alert("Erro", "Preencha todos os campos obrigatórios");
       return;
+    }
+
+    const tickerUpper = ticker.toUpperCase().trim();
+    const qtyFloat = parseFloat(quantity.replace(',', '.'));
+    const priceFloat = parseFloat(price.replace(',', '.'));
+
+    if (isNaN(qtyFloat) || qtyFloat <= 0) {
+      Alert.alert("Erro", "Quantidade inválida.");
+      return;
+    }
+
+    if (operation === 'VENDA') {
+      // Busca se o ativo existe na carteira do usuário
+      const position = positions.find(p => p.ticker === tickerUpper);
+
+      // Verifica se o usuário tem o ativo
+      if (!position) {
+        Alert.alert(
+          "Operação Inválida", 
+          `Você não possui o ativo ${tickerUpper} na sua carteira para vender.`
+        );
+        return;
+      }
+
+      // Verifica se o saldo é suficiente
+      if (qtyFloat > position.quantity) {
+        Alert.alert(
+          "Saldo Insuficiente", 
+          `Você possui apenas ${position.quantity} unidades de ${tickerUpper}. Não é possível vender ${qtyFloat}.`
+        );
+        return;
+      }
     }
 
     // Atributos da transação
