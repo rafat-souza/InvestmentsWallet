@@ -1,18 +1,17 @@
 import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import { WalletContext } from '../WalletContext';
-import { getHistoricalData } from '../api';
 
-const TYPE_COLORS = { etf: '#7b1fa2', bdr: '#1565c0', stock: '#2e7d32' }; 
-const TYPE_LABELS = { etf: 'ETFs', bdr: 'BDRs', stock: 'Ações' };
+const TYPE_COLORS = { stock: '#2e7d32', cripto: '#fbc02d', bdr: '#1565c0', etf: '#7b1fa2' };
+const TYPE_LABELS = { stock: 'Ações', cripto: 'Cripto', bdr: 'BDRs', etf: 'ETFs' };
 
 const TIMEFRAMES = [
-  { key: '1mo', label: '1 Mês', interval: '1d' },
-  { key: '3mo', label: '3 Meses', interval: '1d' },
-  { key: '6mo', label: '6 Meses', interval: '5d' }, 
-  { key: '1y', label: '1 Ano', interval: '1wk' },   
+  { key: 'all', label: 'Início' },
+  { key: 'month', label: 'Mês Atual' },
+  { key: 'year', label: 'Ano Atual' },
+  { key: '12m', label: '1 Ano' },
 ];
 
 export default function DashboardScreen({ navigation }) {
@@ -20,141 +19,75 @@ export default function DashboardScreen({ navigation }) {
   const { positions, transactions, isPrivacyMode, togglePrivacyMode, refreshPrices, currentPortfolioValue, lastUpdate } = useContext(WalletContext);
 
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedTimeframe, setSelectedTimeframe] = useState(TIMEFRAMES[0]); 
-  const [chartData, setChartData] = useState(null);
-  const [loadingChart, setLoadingChart] = useState(false);
-
-  // 1. Calcula o Custo Total Investido (Dinheiro que saiu do bolso do usuário)
-  const totalInvestedCost = useMemo(() => {
-    return positions.reduce((acc, item) => acc + (item.quantity * item.averagePrice), 0);
-  }, [positions]);
-
-  // 2. Rentabilidade Atual - Comparação: Valor Atual vs Custo
-  const profitValue = currentPortfolioValue - totalInvestedCost;
-  const profitPercent = totalInvestedCost > 0 ? (profitValue / totalInvestedCost) * 100 : 0;
-
-  // 
-  const fetchChartData = async () => {
-    if (positions.length === 0) {
-      setChartData(null);
-      return;
-    }
-
-    setLoadingChart(true);
-    try {
-      const tickers = positions.map(p => p.ticker);
-      
-      // Busca histórico na API
-      const historicalResults = await getHistoricalData(tickers, selectedTimeframe.key, selectedTimeframe.interval);
-
-      if (!historicalResults || historicalResults.length === 0) {
-        setChartData(null);
-        return;
-      }
-
-      // 
-      const assetHistoryMap = {}; 
-      const allDatesSet = new Set();
-
-      historicalResults.forEach(asset => {
-        if (asset.historicalDataPrice) {
-          assetHistoryMap[asset.symbol] = {};
-          asset.historicalDataPrice.forEach(point => {
-            // Guarda preço de fechamento indexado pela data
-            if (point.date && point.close) {
-              allDatesSet.add(point.date);
-              assetHistoryMap[asset.symbol][point.date] = point.close;
-            }
-          });
-        }
-      });
-
-      // Ordena as datas cronologicamente
-      const sortedDates = Array.from(allDatesSet).sort((a, b) => a - b);
-
-      if (sortedDates.length < 2) {
-        setChartData(null);
-        return;
-      }
-
-      const dataPoints = [];
-      const labels = [];
-      
-      
-      const labelInterval = Math.ceil(sortedDates.length / 5);
-
-     
-      const lastKnownPrices = {}; 
-
-    
-      positions.forEach(p => {
-        lastKnownPrices[p.ticker] = p.averagePrice;
-      });
-
-      sortedDates.forEach((dateKey, index) => {
-        let dailyPortfolioValue = 0;
-
-        // Para cada dia, soma o valor de todos os ativos que o usuário tem
-        positions.forEach(pos => {
-          const histMap = assetHistoryMap[pos.ticker];
-          
-          // Se tem preço nesse dia, usa e atualiza o último conhecido
-          if (histMap && histMap[dateKey]) {
-            lastKnownPrices[pos.ticker] = histMap[dateKey];
-          }
-          
-          // Usa o preço atual (deste dia) ou o último conhecido (se for feriado pra esse ativo)
-          const priceToUse = lastKnownPrices[pos.ticker];
-          
-          dailyPortfolioValue += (priceToUse * pos.quantity);
-        });
-
-        // Calcular Rentabilidade % 
-        // Fórmula: ((ValorTotalDia - CustoTotal) / CustoTotal) * 100
-        let percentage = 0;
-        if (totalInvestedCost > 0) {
-          percentage = ((dailyPortfolioValue - totalInvestedCost) / totalInvestedCost) * 100;
-        }
-
-        
-        if (!isFinite(percentage)) percentage = 0;
-
-        dataPoints.push(percentage);
-
-        
-        if (index % labelInterval === 0 || index === sortedDates.length - 1) {
-          const d = new Date(dateKey * 1000);
-          const day = d.getDate().toString().padStart(2, '0');
-          const month = (d.getMonth() + 1).toString().padStart(2, '0');
-          labels.push(`${day}/${month}`);
-        } else {
-          labels.push(''); 
-        }
-      });
-
-      setChartData({
-        labels: labels,
-        datasets: [{ data: dataPoints }]
-      });
-
-    } catch (e) {
-      console.error("Erro no gráfico:", e);
-      setChartData(null);
-    } finally {
-      setLoadingChart(false);
-    }
-  };
+  const [selectedTimeframe, setSelectedTimeframe] = useState('all');
 
   useEffect(() => {
-    fetchChartData();
-  }, [positions, selectedTimeframe, totalInvestedCost]);
+    if (positions.length > 0) {
+      refreshPrices();
+    }
+  }, [positions.length]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshPrices();
-    await fetchChartData();
     setRefreshing(false);
   }, [refreshPrices]);
+
+  const totalInvested = useMemo(() => {
+    return positions.reduce((acc, item) => acc + (item.quantity * item.averagePrice), 0);
+  }, [positions]);
+
+  const profitValue = currentPortfolioValue - totalInvested;
+  const profitPercent = totalInvested > 0 ? (profitValue / totalInvested) * 100 : 0;
+
+  const getChartLabels = () => {
+    const today = new Date();
+    const endLabel = `${today.getDate()}/${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+    
+    let startLabel = "Início";
+
+    switch (selectedTimeframe) {
+      case 'month':
+        startLabel = `01/${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+        break;
+      case 'year':
+        startLabel = `01/01/${today.getFullYear().toString().slice(-2)}`;
+        break;
+      case '12m':
+        startLabel = `${today.getDate()}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${(today.getFullYear() - 1).toString().slice(-2)}`;
+        break;
+      case 'all':
+      default:
+        if (transactions.length > 0) {
+          const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+          const firstDate = new Date(sorted[0].date);
+          startLabel = `${firstDate.getDate()}/${(firstDate.getMonth() + 1).toString().padStart(2, '0')}/${firstDate.getFullYear().toString().slice(-2)}`;
+        }
+        break;
+    }
+
+    return [startLabel, endLabel];
+  };
+
+  const chartColor = (opacity = 1) => {
+    if (profitPercent >= 0) return `rgba(46, 125, 50, ${opacity})`; 
+    return `rgba(211, 47, 47, ${opacity})`; 
+  };
+
+  const chartData = {
+    labels: getChartLabels(),
+    datasets: [
+      {
+        data: [0, profitPercent],
+        color: chartColor, 
+        strokeWidth: 3
+      },
+      {
+        data: [0], 
+        withDots: false,
+      }
+    ]
+  };
 
   const formatCurrency = (value) => {
     if (isPrivacyMode) return 'R$ ****';
@@ -169,15 +102,18 @@ export default function DashboardScreen({ navigation }) {
 
   const getProfitColor = (val) => val >= 0 ? '#4caf50' : '#f44336';
 
-  
   const allocationBreakdown = useMemo(() => {
-    let breakdown = { stock: 0, bdr: 0, etf: 0 };
+    let breakdown = { stock: 0, bdr: 0, etf: 0, cripto: 0 };
     positions.forEach(p => {
-      const val = p.quantity * (p.currentPrice || p.averagePrice); 
-      const type = (p.type === 'bdr' || p.type === 'etf') ? p.type : 'stock';
+      const currentPrice = p.currentPrice || p.averagePrice;
+      const val = p.quantity * currentPrice; 
+      
+      const type = (p.type === 'bdr' || p.type === 'etf' || p.type === 'cripto') ? p.type : 'stock';
       if (breakdown[type] !== undefined) breakdown[type] += val;
     });
+
     const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
+    
     return Object.keys(breakdown)
       .map(type => ({
         type, value: breakdown[type],
@@ -208,7 +144,6 @@ export default function DashboardScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-  
       <View style={styles.mainCard}>
         <Text style={styles.mainCardLabel}>Patrimônio Total</Text>
         <Text style={styles.mainCardValue}>{formatCurrency(currentPortfolioValue)}</Text>
@@ -249,10 +184,10 @@ export default function DashboardScreen({ navigation }) {
         {TIMEFRAMES.map((tf) => (
           <TouchableOpacity 
             key={tf.key} 
-            style={[styles.filterBtn, selectedTimeframe.key === tf.key && styles.filterBtnActive]}
-            onPress={() => setSelectedTimeframe(tf)}
+            style={[styles.filterBtn, selectedTimeframe === tf.key && styles.filterBtnActive]}
+            onPress={() => setSelectedTimeframe(tf.key)}
           >
-            <Text style={[styles.filterText, selectedTimeframe.key === tf.key && styles.filterTextActive]}>
+            <Text style={[styles.filterText, selectedTimeframe === tf.key && styles.filterTextActive]}>
               {tf.label}
             </Text>
           </TouchableOpacity>
@@ -260,42 +195,33 @@ export default function DashboardScreen({ navigation }) {
       </View>
 
       <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Gráfico de Rentabilidade (%)</Text>
-        {loadingChart ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#2e7d32" />
-            <Text style={{ marginTop: 10, color: '#888', fontSize: 12 }}>Buscando histórico...</Text>
-          </View>
-        ) : (chartData && chartData.datasets[0].data.length > 0) ? (
+        <Text style={styles.chartTitle}>Evolução da Rentabilidade (%)</Text>
+        
+        {positions.length > 0 ? (
           <LineChart
             data={chartData}
             width={width - 40} 
             height={220}
             yAxisSuffix="%"
-            yAxisInterval={1}
             chartConfig={{
               backgroundColor: "#fff",
               backgroundGradientFrom: "#fff",
               backgroundGradientTo: "#fff",
               decimalPlaces: 1,
-              color: (opacity = 1) => getProfitColor(chartData.datasets[0].data[chartData.datasets[0].data.length - 1]),
+              color: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
               labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
-              propsForDots: { r: "0" },
-              propsForBackgroundLines: { strokeDasharray: "" },
+              propsForDots: { r: "5", strokeWidth: "2", stroke: profitPercent >= 0 ? "#2e7d32" : "#d32f2f" },
+              propsForBackgroundLines: { strokeDasharray: "" } 
             }}
             bezier
             style={{ marginVertical: 8, borderRadius: 16 }}
+            fromZero={true} 
             withInnerLines={true}
             withOuterLines={true}
-            withVerticalLines={false}
           />
         ) : (
           <View style={styles.loadingBox}>
-            <Text style={styles.emptyText}>
-              {positions.length === 0 
-                ? "Adicione ativos na aba 'Cadastrar' para ver o gráfico." 
-                : "Não foi possível carregar o histórico. Verifique sua conexão."}
-            </Text>
+            <Text style={styles.emptyText}>Adicione ativos para ver o gráfico.</Text>
           </View>
         )}
       </View>
@@ -307,6 +233,7 @@ export default function DashboardScreen({ navigation }) {
         positions.map((pos) => {
           const currentP = pos.currentPrice || pos.averagePrice;
           const gain = pos.averagePrice > 0 ? ((currentP - pos.averagePrice) / pos.averagePrice) * 100 : 0;
+          
           return (
             <View key={pos.ticker} style={styles.assetRow}>
               <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -338,26 +265,33 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 22, fontWeight: 'bold', color: '#000' },
   subGreeting: { fontSize: 14, color: '#667' },
   privacyBtn: { padding: 8, backgroundColor: '#f0f0f0', borderRadius: 20 },
+  
   mainCard: { backgroundColor: '#121212', borderRadius: 16, padding: 20, margin: 20, marginTop: 10, elevation: 4 },
   mainCardLabel: { color: '#ccc', fontSize: 14, marginBottom: 5 },
   mainCardValue: { color: '#fff', fontSize: 32, fontWeight: 'bold', marginBottom: 5 },
+  
   progressBarContainer: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: '#333', marginBottom: 12, marginTop: 10 },
   legendContainer: { flexDirection: 'row', flexWrap: 'wrap' },
   legendItem: { flexDirection: 'row', alignItems: 'center', marginRight: 15, marginBottom: 5 },
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
   legendText: { color: '#ccc', fontSize: 12, fontWeight: 'bold' },
+  
   filtersContainer: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 15 },
   filterBtn: { backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, borderWidth: 1, borderColor: '#eee' },
   filterBtnActive: { backgroundColor: '#2e7d32', borderColor: '#2e7d32' },
   filterText: { fontSize: 12, color: '#666', fontWeight: '600' },
   filterTextActive: { color: '#fff' },
+  
   chartCard: { backgroundColor: '#fff', borderRadius: 16, padding: 10, marginHorizontal: 20, marginBottom: 25, elevation: 2, alignItems: 'center', minHeight: 250 },
   chartTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10, alignSelf: 'flex-start', marginLeft: 10 },
   loadingBox: { height: 180, justifyContent: 'center', alignItems: 'center' },
+  
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#000', marginBottom: 10, marginHorizontal: 20 },
+  
   assetRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 15, marginHorizontal: 20, marginBottom: 10, borderRadius: 12, elevation: 1 },
   colorIndicator: { width: 4, height: 30, borderRadius: 2, marginRight: 12 },
   assetTicker: { fontWeight: 'bold', fontSize: 16, color: '#333' },
   assetSub: { fontSize: 12, color: '#888' },
+  
   emptyText: { textAlign: 'center', color: '#999', marginTop: 10, fontStyle: 'italic', paddingHorizontal: 20 },
 });

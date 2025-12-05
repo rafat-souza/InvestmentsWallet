@@ -9,7 +9,6 @@ const api = axios.create({
   },
 });
 
-// Busca cotação atual (Suporta múltiplos tickers ex: "PETR4,VALE3")
 export const getAssetQuote = async (ticker) => {
   try {
     const response = await api.get(`/quote/${ticker}`);
@@ -22,7 +21,6 @@ export const getAssetQuote = async (ticker) => {
     return [];
   }
 };
-
 
 export const searchAssets = async (term) => {
   if (!term || term.length < 2) return [];
@@ -51,30 +49,29 @@ export const searchAssets = async (term) => {
   }
 };
 
-
 export const getHistoricalData = async (tickers, range = '1mo', interval = '1d') => {
   if (!tickers || tickers.length === 0) return [];
 
-  try {
-    
-    const requests = tickers.map(ticker => 
-      api.get(`/quote/${ticker}`, {
+  const results = [];
+
+  for (const ticker of tickers) {
+    try {
+      const response = await api.get(`/quote/${ticker}`, {
         params: { range, interval }
-      }).catch(err => null) 
-    );
+      });
 
-    const responses = await Promise.all(requests);
-    
-    
-    const results = responses
-      .filter(r => r && r.data && r.data.results && r.data.results.length > 0)
-      .map(r => r.data.results[0]);
+      if (response.data && response.data.results && response.data.results.length > 0) {
+        results.push(response.data.results[0]);
+      }
 
-    return results;
-  } catch (error) {
-    console.error("Erro ao buscar histórico:", error);
-    return [];
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+    } catch (error) {
+      console.error(`Erro ao buscar histórico de ${ticker}:`, error.message);
+    }
   }
+
+  return results;
 };
 
 export default api;
