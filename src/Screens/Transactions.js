@@ -1,7 +1,8 @@
 import { useState, useEffect, useContext } from 'react';
 import { 
   View, Text, TextInput, StyleSheet, TouchableOpacity, 
-  ActivityIndicator, ScrollView, Alert, KeyboardAvoidingView, Platform, Keyboard 
+  ActivityIndicator, ScrollView, Alert, KeyboardAvoidingView, 
+  Platform, Keyboard, Pressable 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -39,7 +40,6 @@ export default function Transactions({ navigation }) {
         return;
     }
     
-    // Evita buscar se já selecionamos (se o input for igual ao último selecionado)
     if (suggestions.length === 0 && ticker.length >= 2) {
         const delayDebounce = setTimeout(async () => {
           const searchType = type === 'cripto' ? 'cripto' : 'stock';
@@ -170,7 +170,6 @@ export default function Transactions({ navigation }) {
             }
         }
 
-        // Atributos da transação
         const transaction = {
             id: Date.now().toString(),
             type: type, 
@@ -192,8 +191,13 @@ export default function Transactions({ navigation }) {
         console.log("Erro ao salvar", error);
         Alert.alert("Erro", "Ocorreu um erro ao validar a transação.");
     } finally {
-        setSaving(false); // Desativa o loading
+        setSaving(false); 
     }
+  };
+
+  const dismissSuggestions = () => {
+    setSuggestions([]);
+    Keyboard.dismiss();
   };
 
   return (
@@ -203,129 +207,140 @@ export default function Transactions({ navigation }) {
     >
       <ScrollView 
         contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="always" 
+        keyboardShouldPersistTaps="handled" 
+        onScrollBeginDrag={dismissSuggestions} 
       >
-        
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity 
-            style={[styles.toggleBtn, operation === 'COMPRA' && styles.buyBtn]} 
-            onPress={() => setOperation('COMPRA')}
-          >
-            <Text style={[styles.toggleText, operation === 'COMPRA' && styles.activeText]}>COMPRAR</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.toggleBtn, operation === 'VENDA' && styles.sellBtn]} 
-            onPress={() => setOperation('VENDA')}
-          >
-            <Text style={[styles.toggleText, operation === 'VENDA' && styles.activeText]}>VENDER</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.label}>Tipo de Ativo</Text>
-        <View style={styles.typeRow}>
-          {ASSET_TYPES.map((item) => (
-            <TouchableOpacity 
-              key={item.id}
-              onPress={() => {
-                setType(item.id);
-                setTicker(''); 
-                setSuggestions([]);
-              }} 
-              style={[
-                styles.typeBtn, 
-                type === item.id && styles.activeTypeBtn
-              ]}
-            >
-              <Ionicons 
-                name={item.icon} 
-                size={18} 
-                color={type === item.id ? '#fff' : '#667'} 
-              />
-              <Text style={[
-                styles.typeBtnText, 
-                type === item.id && styles.activeTypeBtnText
-              ]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-          
-        <View style={{ zIndex: 100 }}> 
-            <Text style={styles.label}>Código {type ? `(${type.toUpperCase()})` : ''}</Text>
-            <TextInput 
-              style={styles.input} 
-              value={ticker} 
-              onChangeText={setTicker} 
-              placeholder={type === 'cripto' ? "Ex: BTC" : "Ex: PETR4, IVVB11"}
-              autoCapitalize="characters"
-            />
-            
-            {suggestions.length > 0 && (
-              <View style={styles.suggestionsBox}>
-                {suggestions.map((item, index) => {
-                  const displaySymbol = item.stock || item.symbol || "UNK"; 
-                  const displayName = item.name || "";
-
-                  return (
-                    <TouchableOpacity 
-                      key={index} 
-                      style={styles.suggestionItem} 
-                      onPress={() => handleSelectAsset(item)}
-                    >
-                      <Text style={styles.suggestionText}>{displaySymbol}</Text>
-                      {displayName ? <Text style={styles.suggestionSub} numberOfLines={1}>{displayName}</Text> : null}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-        </View>
-
-        <View style={styles.row}>
-          <View style={styles.col}>
-            <Text style={styles.label}>Quantidade</Text>
-            <TextInput 
-              style={styles.input} 
-              value={quantity} 
-              onChangeText={setQuantity} 
-              keyboardType="numeric"
-              placeholder="0.00"
-            />
-          </View>
-          <View style={styles.col}>
-            <Text style={styles.label}>Preço (R$)</Text>
-            <View style={styles.priceInputContainer}>
-              <TextInput 
-                style={[styles.input, { flex: 1, marginBottom: 0 }]} 
-                value={price} 
-                onChangeText={setPrice} 
-                keyboardType="numeric"
-                placeholder="0.00"
-              />
-              {loadingPrice && <ActivityIndicator size="small" color="#2e7d32" style={{marginLeft: 10}} />}
+        <Pressable onPress={dismissSuggestions} style={{ flex: 1 }}>
+          <View>
+            <View style={styles.toggleContainer}>
+              <TouchableOpacity 
+                style={[styles.toggleBtn, operation === 'COMPRA' && styles.buyBtn]} 
+                onPress={() => setOperation('COMPRA')}
+              >
+                <Text style={[styles.toggleText, operation === 'COMPRA' && styles.activeText]}>COMPRAR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.toggleBtn, operation === 'VENDA' && styles.sellBtn]} 
+                onPress={() => setOperation('VENDA')}
+              >
+                <Text style={[styles.toggleText, operation === 'VENDA' && styles.activeText]}>VENDER</Text>
+              </TouchableOpacity>
             </View>
+
+            <Text style={styles.label}>Tipo de Ativo</Text>
+            <View style={styles.typeRow}>
+              {ASSET_TYPES.map((item) => (
+                <TouchableOpacity 
+                  key={item.id}
+                  onPress={() => {
+                    setType(item.id);
+                    setTicker(''); 
+                    setSuggestions([]);
+                  }} 
+                  style={[
+                    styles.typeBtn, 
+                    type === item.id && styles.activeTypeBtn
+                  ]}
+                >
+                  <Ionicons 
+                    name={item.icon} 
+                    size={18} 
+                    color={type === item.id ? '#fff' : '#667'} 
+                  />
+                  <Text style={[
+                    styles.typeBtnText, 
+                    type === item.id && styles.activeTypeBtnText
+                  ]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+              
+            <View style={{ zIndex: 100 }}> 
+                <Text style={styles.label}>Código {type ? `(${type.toUpperCase()})` : ''}</Text>
+                <TextInput 
+                  style={styles.input} 
+                  value={ticker} 
+                  onChangeText={setTicker} 
+                  placeholder={type === 'cripto' ? "Ex: BTC" : "Ex: PETR4, IVVB11"}
+                  autoCapitalize="characters"
+                />
+                
+                {suggestions.length > 0 && (
+                  <View style={styles.suggestionsBox}>
+                    <ScrollView 
+                        nestedScrollEnabled={true} 
+                        keyboardShouldPersistTaps="handled"
+                        style={{ maxHeight: 180 }}
+                    >
+                        {suggestions.map((item, index) => {
+                        const displaySymbol = item.stock || item.symbol || "UNK"; 
+                        const displayName = item.name || "";
+
+                        return (
+                            <TouchableOpacity 
+                            key={index} 
+                            style={styles.suggestionItem} 
+                            onPress={() => handleSelectAsset(item)}
+                            >
+                            <Text style={styles.suggestionText}>{displaySymbol}</Text>
+                            {displayName ? <Text style={styles.suggestionSub} numberOfLines={1}>{displayName}</Text> : null}
+                            </TouchableOpacity>
+                        );
+                        })}
+                    </ScrollView>
+                  </View>
+                )}
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.col}>
+                <Text style={styles.label}>Quantidade</Text>
+                <TextInput 
+                  style={styles.input} 
+                  value={quantity} 
+                  onChangeText={setQuantity} 
+                  keyboardType="numeric"
+                  placeholder="0.00"
+                  onFocus={() => setSuggestions([])} 
+                />
+              </View>
+              <View style={styles.col}>
+                <Text style={styles.label}>Preço (R$)</Text>
+                <View style={styles.priceInputContainer}>
+                  <TextInput 
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]} 
+                    value={price} 
+                    onChangeText={setPrice} 
+                    keyboardType="numeric"
+                    placeholder="0.00"
+                    onFocus={() => setSuggestions([])} 
+                  />
+                  {loadingPrice && <ActivityIndicator size="small" color="#2e7d32" style={{marginLeft: 10}} />}
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+                style={[
+                    styles.saveButton, 
+                    operation === 'VENDA' ? styles.sellBtn : styles.buyBtn,
+                    saving && { opacity: 0.7 }
+                ]} 
+                onPress={handleSave}
+                disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>
+                    {operation === 'COMPRA' ? 'REGISTRAR APORTE' : 'REGISTRAR VENDA'}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
-        </View>
-
-        <TouchableOpacity 
-            style={[
-                styles.saveButton, 
-                operation === 'VENDA' ? styles.sellBtn : styles.buyBtn,
-                saving && { opacity: 0.7 }
-            ]} 
-            onPress={handleSave}
-            disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>
-                {operation === 'COMPRA' ? 'REGISTRAR APORTE' : 'REGISTRAR VENDA'}
-            </Text>
-          )}
-        </TouchableOpacity>
-
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -367,8 +382,8 @@ const styles = StyleSheet.create({
   priceInputContainer: { flexDirection: 'row', alignItems: 'center' },
 
   suggestionsBox: { 
-    position: 'absolute',
-    top: 75, 
+    position: 'relative',
+    top: 0, 
     left: 0,
     right: 0,
     backgroundColor: '#fff', 
