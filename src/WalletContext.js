@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { getStockQuote, getCryptoQuote } from './api';
+import { getAssetQuote } from './api';
 
 export const WalletContext = createContext({});
 
@@ -36,12 +36,9 @@ export const WalletProvider = ({ children }) => {
   const addTransaction = async (newTransaction) => {
     try {
       const updatedTransactions = [...transactions, newTransaction];
-      
       setTransactions(updatedTransactions);
       await AsyncStorage.setItem('@transactions', JSON.stringify(updatedTransactions));
-      
       recalculatePortfolio(updatedTransactions);
-
     } catch (e) {
       console.error("Erro ao salvar transação", e);
     }
@@ -52,7 +49,6 @@ export const WalletProvider = ({ children }) => {
 
     allTransactions.forEach(tx => {
       const ticker = tx.ticker;
-      
       if (!port[ticker]) {
         port[ticker] = {
           ticker: ticker,
@@ -68,19 +64,16 @@ export const WalletProvider = ({ children }) => {
       if (tx.operation === 'COMPRA') {
         const currentTotalValue = current.quantity * current.averagePrice;
         const newPurchaseValue = tx.quantity * tx.price;
-        
         const newTotalQty = current.quantity + tx.quantity;
         
         if (newTotalQty > 0) {
           current.averagePrice = (currentTotalValue + newPurchaseValue) / newTotalQty;
         }
-        
         current.quantity = newTotalQty;
         current.totalInvested += newPurchaseValue;
 
       } else if (tx.operation === 'VENDA') {
         current.quantity -= tx.quantity;
-        
         if (current.quantity <= 0) {
           current.quantity = 0;
           current.totalInvested = 0;
@@ -93,38 +86,52 @@ export const WalletProvider = ({ children }) => {
 
     const positionsArray = Object.values(port).filter(p => p.quantity > 0);
     setPositions(positionsArray);
-
-    const totalInvested = positionsArray.reduce((acc, item) => acc + item.totalInvested, 0);
-    setCurrentPortfolioValue(totalInvested);
+    
+    // Chama refreshPrices passando o array calculado para atualizar valores de mercado
+    refreshPrices(positionsArray);
   };
 
-  const refreshPrices = async () => {
-    if (positions.length === 0) return;
+  // --- CORREÇÃO PRINCIPAL: BUSCA EM LOTE ---
+  const refreshPrices = async (currentPositions = positions) => {
+    if (currentPositions.length === 0) {
+      setCurrentPortfolioValue(0);
+      return;
+    }
 
-    let totalCurrentValue = 0;
-    
-    const updatedPositions = await Promise.all(positions.map(async (pos) => {
-      let currentPrice = pos.averagePrice; 
+    try {
+      // Cria string com todos os tickers: "PETR4,VALE3,IVVB11"
+      const tickers = currentPositions.map(p => p.ticker).join(',');
       
-      try {
-        if (pos.type === 'cripto') {
-          const data = await getCryptoQuote(pos.ticker);
-          if (data) currentPrice = data.regularMarketPrice;
-        } else {
-          const data = await getStockQuote(pos.ticker);
-          if (data) currentPrice = data.regularMarketPrice;
-        }
-      } catch (error) {
-        console.log(`Erro ao atualizar ${pos.ticker}`, error);
-      }
-
-      totalCurrentValue += (pos.quantity * currentPrice);
+      // Busca todos de uma vez
+      const quotes = await getAssetQuote(tickers);
       
-      return { ...pos, currentPrice };
-    }));
+      // Cria um mapa para acesso rápido: { 'PETR4': 35.50, 'VALE3': 60.20 }
+      const priceMap = {};
+      quotes.forEach(q => {
+        priceMap[q.symbol] = q.regularMarketPrice;
+      });
 
-    setCurrentPortfolioValue(totalCurrentValue);
-    setLastUpdate(new Date());
+      let totalCurrentValue = 0;
+
+      const updatedPositions = currentPositions.map(pos => {
+        // Se a API retornou preço, usa. Senão, mantém o preço médio (fallback)
+        const marketPrice = priceMap[pos.ticker] || pos.averagePrice;
+        
+        totalCurrentValue += (pos.quantity * marketPrice);
+
+        return { 
+          ...pos, 
+          currentPrice: marketPrice 
+        };
+      });
+
+      setPositions(updatedPositions);
+      setCurrentPortfolioValue(totalCurrentValue);
+      setLastUpdate(new Date());
+
+    } catch (e) {
+      console.log("Erro ao atualizar preços em lote", e);
+    }
   };
 
   const togglePrivacyMode = async (value) => {
