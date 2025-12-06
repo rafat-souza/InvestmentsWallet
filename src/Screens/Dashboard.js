@@ -267,7 +267,8 @@ const styles = StyleSheet.create({
   mainCard: { backgroundColor: '#121212', borderRadius: 16, padding: 20, margin: 20, marginTop: 10, elevation: 4 },
   mainCardLabel: { color: '#ccc', fontSize: 14, marginBottom: 5 },
   mainCardValue: { color: '#fff', fontSize: 32, fontWeight: 'bold', marginBottom: 5 },
-  
+  emptyCardText: { color: '#fff', fontStyle: 'italic', marginBottom: 10, textAlign: 'center', marginTop: 20 }, // Cor ajustada para branco
+
   progressBarContainer: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: '#333', marginBottom: 12, marginTop: 10 },
   legendContainer: { flexDirection: 'row', flexWrap: 'wrap' },
   legendItem: { flexDirection: 'row', alignItems: 'center', marginRight: 15, marginBottom: 5 },

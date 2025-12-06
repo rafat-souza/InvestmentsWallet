@@ -24,11 +24,19 @@ export default function Transactions({ navigation }) {
   const [ticker, setTicker] = useState('');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
+  const [total, setTotal] = useState(0); // Novo estado para o total
   const [date] = useState(new Date().toISOString().split('T')[0]);
   
   const [suggestions, setSuggestions] = useState([]);
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [saving, setSaving] = useState(false); 
+
+  // Efeito para calcular o total em tempo real
+  useEffect(() => {
+    const q = parseFloat(quantity.replace(',', '.')) || 0;
+    const p = parseFloat(price.replace(',', '.')) || 0;
+    setTotal(q * p);
+  }, [quantity, price]);
 
   useEffect(() => {
     setSuggestions([]);
@@ -57,8 +65,6 @@ export default function Transactions({ navigation }) {
   const handleSelectAsset = (item) => {
     const code = item.stock || item.symbol || item;
     
-    console.log("Selecionado (Code):", code); 
-
     if (item.type) {
       const itemType = item.type.toLowerCase();
       if (itemType === 'fund' || itemType === 'etf') {
@@ -75,8 +81,6 @@ export default function Transactions({ navigation }) {
         setSuggestions([]);   
         Keyboard.dismiss();    
         fetchCurrentPrice(code); 
-    } else {
-        console.warn("Não foi possível identificar o código do ativo no item clicado.");
     }
   };
 
@@ -84,9 +88,9 @@ export default function Transactions({ navigation }) {
     if (!symbol) return;
     
     setLoadingPrice(true);
-    let data = null;
     
     try {
+      let data = null;
       if (type === 'cripto') {
         data = await getCryptoQuote(symbol);
       } else {
@@ -114,7 +118,7 @@ export default function Transactions({ navigation }) {
       return;
     }
 
-    setSaving(true); // Ativa o loading no botão
+    setSaving(true); 
 
     try {
         const tickerUpper = ticker.toUpperCase().trim();
@@ -127,7 +131,6 @@ export default function Transactions({ navigation }) {
             return;
         }
 
-        // Verifica se o ativo realmente existe na API antes de prosseguir
         let isValidAsset = false;
         
         if (type === 'cripto') {
@@ -141,13 +144,12 @@ export default function Transactions({ navigation }) {
         if (!isValidAsset) {
             Alert.alert(
                 "Ativo Não Encontrado", 
-                `O código "${tickerUpper}" não foi encontrado na base de dados. Verifique se o código está correto.`
+                `O código "${tickerUpper}" não foi encontrado na base de dados.`
             );
             setSaving(false);
-            return; // Bloqueia o salvamento
+            return; 
         }
 
-        // Validação de saldo para venda
         if (operation === 'VENDA') {
             const position = positions.find(p => p.ticker === tickerUpper);
 
@@ -199,6 +201,8 @@ export default function Transactions({ navigation }) {
     setSuggestions([]);
     Keyboard.dismiss();
   };
+
+  const formatCurrency = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
     <KeyboardAvoidingView 
@@ -321,6 +325,12 @@ export default function Transactions({ navigation }) {
                 </View>
               </View>
             </View>
+            
+            {/* Exibição do Total Estimado */}
+            <View style={styles.totalContainer}>
+                <Text style={styles.totalLabel}>Valor Estimado:</Text>
+                <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
+            </View>
 
             <TouchableOpacity 
                 style={[
@@ -359,7 +369,7 @@ const styles = StyleSheet.create({
 
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 15 },
   typeBtn: { 
-    width: '48%',
+    width: '30%',
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center',
@@ -371,7 +381,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fafafa'
   },
   activeTypeBtn: { backgroundColor: '#333', borderColor: '#333' },
-  typeBtnText: { marginLeft: 8, color: '#666', fontSize: 14 },
+  typeBtnText: { marginLeft: 5, color: '#666', fontSize: 12 },
   activeTypeBtnText: { color: '#fff', fontWeight: 'bold' },
 
   label: { fontSize: 14, color: '#666', marginBottom: 5, marginTop: 5 },
@@ -380,6 +390,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', zIndex: -1 }, 
   col: { width: '48%' },
   priceInputContainer: { flexDirection: 'row', alignItems: 'center' },
+
+  totalContainer: { marginTop: 15, alignItems: 'flex-end', padding: 15, backgroundColor: '#f9f9f9', borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
+  totalLabel: { fontSize: 14, color: '#666' },
+  totalValue: { fontSize: 24, fontWeight: 'bold', color: '#333' },
 
   suggestionsBox: { 
     position: 'relative',
@@ -402,6 +416,6 @@ const styles = StyleSheet.create({
   suggestionText: { fontWeight: 'bold', fontSize: 16, color: '#333' },
   suggestionSub: { fontSize: 12, color: '#888' },
 
-  saveButton: { padding: 18, borderRadius: 10, alignItems: 'center', marginTop: 40 },
+  saveButton: { padding: 18, borderRadius: 10, alignItems: 'center', marginTop: 20 },
   saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });
