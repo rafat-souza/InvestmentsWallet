@@ -1,51 +1,69 @@
 import axios from 'axios';
 
-const API_TOKEN = '9UHJzxmSBvyQFC1LVDJa9S';
+const BRAPI_TOKEN = '9UHJzxmSBvyQFC1LVDJa9S'; 
 
 const api = axios.create({
   baseURL: 'https://brapi.dev/api',
   params: {
-    token: API_TOKEN, 
-  },
+    token: BRAPI_TOKEN,
+  }
 });
 
 export const getStockQuote = async (ticker) => {
   try {
     const response = await api.get(`/quote/${ticker}`);
-    if (response.data && response.data.results && response.data.results.length > 0) {
-      return response.data.results[0];
-    }
-    return null;
+    return response.data.results[0];
   } catch (error) {
-    console.error(`Erro ao buscar ação ${ticker}:`, error);
+    console.error(`Erro ao buscar cotação de ${ticker}:`, error);
     return null;
   }
 };
 
-export const searchAssets = async (term, type = 'stock') => {
-  if (!term || term.length < 2) return [];
-
+export const getCryptoQuote = async (ticker) => {
   try {
-    if (type === 'cripto') {
-      const response = await api.get('/v2/crypto/available', {
-        params: { search: term }
-      });
-      return response.data.coins.slice(0, 10).map(c => ({ symbol: c, type: 'cripto' }));
-    } else {
-      const response = await api.get('/quote/list', {
-        params: {
-          search: term,
-          limit: 10,
-          sortBy: 'volume',
-          sortOrder: 'desc'
-        }
-      });
-      return response.data.stocks || [];
-    }
+    const response = await api.get(`/quote/${ticker}`, {
+        params: { fundamental: false }
+    });
+    return response.data.results[0];
+  } catch (error) {
+    console.error(`Erro ao buscar cripto ${ticker}:`, error);
+    return null;
+  }
+};
+
+export const searchAssets = async (query, type = 'stock') => {
+  try {
+    const response = await api.get(`/quote/list`, {
+      params: {
+        search: query,
+        limit: 10,
+        type: type === 'cripto' ? 'crypto' : 'stock'
+      }
+    });
+    return response.data.stocks || response.data.indexes || [];
   } catch (error) {
     console.error("Erro na busca:", error);
     return [];
   }
+};
+
+export const getHistoricalData = async (ticker, range = '1mo', interval = '1d') => {
+    try {
+        const response = await api.get(`/quote/${ticker}`, {
+            params: {
+                range: range,      
+                interval: interval 
+            }
+        });
+        
+        const result = response.data.results[0];
+        if (result && result.historicalDataPrice) {
+            return result.historicalDataPrice; 
+        }
+        return [];
+    } catch (error) {
+        return [];
+    }
 };
 
 export default api;
