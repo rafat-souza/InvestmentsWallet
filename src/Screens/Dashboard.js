@@ -2,6 +2,7 @@ import { useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
+import * as NavigationBar from 'expo-navigation-bar';
 import { WalletContext } from '../WalletContext';
 import { getHistoricalData } from '../api';
 
@@ -16,6 +17,23 @@ export default function DashboardScreen({ navigation }) {
   const [chartData, setChartData] = useState(null);
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartDateLabel, setChartDateLabel] = useState(''); 
+
+  // Tela cheia
+  useEffect(() => {
+    async function enableImmersiveMode() {
+      if (Platform.OS === 'android') {
+        try {
+          await NavigationBar.setVisibilityAsync("hidden");
+          
+          await NavigationBar.setBehaviorAsync("overlay-swipe");
+          
+        } catch (e) {
+          console.log("Erro ao configurar barra de navegação (provavelmente rodando na web ou sem a lib):", e);
+        }
+      }
+    }
+    enableImmersiveMode();
+  }, []);
 
   useEffect(() => {
     if (positions.length > 0) {
