@@ -31,15 +31,20 @@ export const getCryptoQuote = async (ticker) => {
   }
 };
 
-export const searchAssets = async (query, type = 'stock') => {
+export const searchAssets = async (query, type) => {
   try {
-    const response = await api.get(`/quote/list`, {
-      params: {
+    const params = {
         search: query,
-        limit: 10,
-        type: type === 'cripto' ? 'crypto' : 'stock'
-      }
-    });
+        limit: 10
+    };
+
+    if (type === 'cripto') {
+        params.type = 'crypto';
+    } 
+
+    const response = await api.get(`/quote/list`, { params });
+    
+    // Unifica resultados de stocks e indexes se houver
     return response.data.stocks || response.data.indexes || [];
   } catch (error) {
     console.error("Erro na busca:", error);

@@ -13,7 +13,7 @@ const Tab = createBottomTabNavigator();
 
 function HomeTabs() {
   return (
-    <Tab.Navigator
+    <Tab.Navigator 
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ color, size }) => {
@@ -24,6 +24,15 @@ function HomeTabs() {
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#2e7d32', 
+        tabBarStyle: {
+          height: 70, 
+          paddingBottom: 10, 
+          paddingTop: 10,  
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,     
+          marginBottom: 5,  
+        }
       })}
     >
       <Tab.Screen name="Dashboard" component={Dashboard} />

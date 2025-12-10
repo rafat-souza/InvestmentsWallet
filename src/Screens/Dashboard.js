@@ -1,5 +1,5 @@
-import { useContext, useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, useWindowDimensions, ActivityIndicator } from 'react-native';
+import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, useWindowDimensions, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -18,17 +18,15 @@ export default function DashboardScreen({ navigation }) {
   const [loadingChart, setLoadingChart] = useState(false);
   const [chartDateLabel, setChartDateLabel] = useState(''); 
 
-  // Tela cheia
+  // Tela cheia (Immersive Mode)
   useEffect(() => {
     async function enableImmersiveMode() {
       if (Platform.OS === 'android') {
         try {
           await NavigationBar.setVisibilityAsync("hidden");
-          
           await NavigationBar.setBehaviorAsync("overlay-swipe");
-          
         } catch (e) {
-          console.log("Erro ao configurar barra de navegação (provavelmente rodando na web ou sem a lib):", e);
+          // Ignora erros silenciosamente
         }
       }
     }
@@ -65,17 +63,32 @@ export default function DashboardScreen({ navigation }) {
     try {
         const uniqueTickers = [...new Set(positions.map(p => p.ticker))];
         
-        // Configuração fixa para buscar o último pregão (Janela Ampliada)
-        const fetchRange = '5d'; 
-        const fetchInterval = '15m';
+        let fetchRange = '5d'; 
+        let fetchInterval = '15m';
+        let isIntraday = true;
 
-        const historyPromises = uniqueTickers.map(ticker => 
+        let historyPromises = uniqueTickers.map(ticker => 
             getHistoricalData(ticker, fetchRange, fetchInterval)
                 .then(data => ({ ticker, data }))
         );
 
-        const historyResults = await Promise.all(historyPromises);
+        let historyResults = await Promise.all(historyPromises);
         
+        const hasData = historyResults.some(r => r.data && r.data.length > 0);
+
+        if (!hasData) {
+            console.log("Fallback: Dados intraday indisponíveis, buscando dados diários...");
+            fetchRange = '1mo'; 
+            fetchInterval = '1d'; 
+            isIntraday = false;
+
+            historyPromises = uniqueTickers.map(ticker => 
+                getHistoricalData(ticker, fetchRange, fetchInterval)
+                    .then(data => ({ ticker, data }))
+            );
+            historyResults = await Promise.all(historyPromises);
+        }
+
         let allTimestamps = new Set();
         const historicalMap = {};
 
@@ -98,33 +111,47 @@ export default function DashboardScreen({ navigation }) {
             return;
         }
 
-        // Filtra para manter apenas o ÚLTIMO dia disponível
-        const lastTimestamp = sortedTimestamps[sortedTimestamps.length - 1];
-        const lastDate = new Date(lastTimestamp * 1000);
-        const lastDayString = lastDate.toDateString(); 
-        
-        // Verifica se é hoje
-        const today = new Date();
-        const isToday = lastDate.getDate() === today.getDate() && 
-                        lastDate.getMonth() === today.getMonth() && 
-                        lastDate.getFullYear() === today.getFullYear();
+        let finalTimestamps = [];
 
-        // Atualiza o label da data
-        const dayFormatted = `${lastDate.getDate()}/${lastDate.getMonth() + 1}`;
-        setChartDateLabel(isToday ? `(Hoje - ${dayFormatted})` : `- Dia ${dayFormatted}`);
+        if (isIntraday) {
+            const daysMap = {};
+            sortedTimestamps.forEach(ts => {
+                const date = new Date(ts * 1000);
+                const dayKey = date.toISOString().split('T')[0];
+                if (!daysMap[dayKey]) daysMap[dayKey] = [];
+                daysMap[dayKey].push(ts);
+            });
 
-        // Mantém apenas os timestamps desse dia
-        sortedTimestamps = sortedTimestamps.filter(ts => {
-            const d = new Date(ts * 1000);
-            return d.toDateString() === lastDayString;
-        });
+            const availableDays = Object.keys(daysMap).sort();
+            
+            let targetDayKey = availableDays[availableDays.length - 1];
+            let targetTimestamps = daysMap[targetDayKey];
 
-        const portfolioHistory = sortedTimestamps.map(ts => {
+            if (targetTimestamps.length < 4 && availableDays.length > 1) {
+                targetDayKey = availableDays[availableDays.length - 2];
+                targetTimestamps = daysMap[targetDayKey];
+            }
+
+            const dateObj = new Date(targetTimestamps[0] * 1000);
+            const today = new Date();
+            const isSameDay = dateObj.getDate() === today.getDate() && 
+                            dateObj.getMonth() === today.getMonth() &&
+                            dateObj.getFullYear() === today.getFullYear();
+            
+            const dayFormatted = `${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
+            setChartDateLabel(isSameDay ? `(Hoje - ${dayFormatted})` : `(Fechamento - ${dayFormatted})`);
+            finalTimestamps = targetTimestamps;
+
+        } else {
+            setChartDateLabel('(30 Dias)');
+            finalTimestamps = sortedTimestamps;
+        }
+
+        const portfolioHistory = finalTimestamps.map(ts => {
             let marketValueOnDay = 0;
             let investedOnDay = 0;
             let hasAsset = false;
 
-            // Ignora data da transação para focar no movimento do dia da carteira
             positions.forEach(pos => {
                 const qty = pos.quantity;
                 if (qty > 0) {
@@ -132,7 +159,6 @@ export default function DashboardScreen({ navigation }) {
                     
                     let price = historicalMap[pos.ticker]?.[ts];
 
-                    // Fallback para preencher buracos no gráfico
                     if (!price && historicalMap[pos.ticker]) {
                         const tickerTimestamps = Object.keys(historicalMap[pos.ticker]).map(k => Number(k)).sort((a,b)=>a-b);
                         let found = null;
@@ -156,11 +182,15 @@ export default function DashboardScreen({ navigation }) {
             return ((marketValueOnDay - investedOnDay) / investedOnDay) * 100;
         });
 
-        const labelInterval = Math.ceil(sortedTimestamps.length / 5);
-        const displayLabels = sortedTimestamps.map((ts, i) => {
-            if (i % labelInterval === 0 || i === sortedTimestamps.length - 1) {
+        const labelInterval = Math.ceil(finalTimestamps.length / 5);
+        const displayLabels = finalTimestamps.map((ts, i) => {
+            if (i % labelInterval === 0 || i === finalTimestamps.length - 1) {
                 const d = new Date(ts * 1000);
-                return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                if (isIntraday) {
+                    return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                } else {
+                    return `${d.getDate()}/${d.getMonth() + 1}`;
+                }
             }
             return '';
         });
@@ -188,6 +218,11 @@ export default function DashboardScreen({ navigation }) {
 
   const profitValue = currentPortfolioValue - totalInvested;
   const profitPercent = totalInvested > 0 ? (profitValue / totalInvested) * 100 : 0;
+
+  // Filtra as últimas 5 transações
+  const recentTransactions = useMemo(() => {
+    return [...transactions].reverse().slice(0, 5);
+  }, [transactions]);
 
   const formatCurrency = (value) => {
     if (isPrivacyMode) return 'R$ ****';
@@ -326,7 +361,7 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.loadingBox}>
             <Text style={styles.emptyText}>Dados indisponíveis no momento.</Text>
             <Text style={{ fontSize: 10, color: '#aaa', marginTop: 5, textAlign: 'center' }}>
-                Aguarde a abertura do mercado.
+                BDRs e ETFs podem não ter gráfico intradiário.
             </Text>
           </View>
         )}
@@ -357,6 +392,43 @@ export default function DashboardScreen({ navigation }) {
             </View>
           );
         })
+      )}
+
+      <Text style={[styles.sectionTitle, { marginTop: 25 }]}>Últimas Movimentações</Text>
+      {recentTransactions.length === 0 ? (
+        <Text style={styles.emptyText}>Nenhuma movimentação registrada.</Text>
+      ) : (
+        recentTransactions.map((tx) => (
+            <View key={tx.id} style={styles.transactionRow}>
+                <View style={[
+                    styles.transactionIconBox, 
+                    { backgroundColor: tx.operation === 'COMPRA' ? '#e8f5e9' : '#ffebee' }
+                ]}>
+                    <Ionicons 
+                        name={tx.operation === 'COMPRA' ? "arrow-down" : "arrow-up"} 
+                        size={18} 
+                        color={tx.operation === 'COMPRA' ? '#2e7d32' : '#c62828'} 
+                    />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.transactionTicker}>{tx.ticker}</Text>
+                    <Text style={styles.transactionDate}>
+                        {tx.date.split('-').reverse().join('/')} • {tx.type ? tx.type.toUpperCase() : 'ATIVO'}
+                    </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[
+                        styles.transactionValue, 
+                        { color: tx.operation === 'COMPRA' ? '#333' : '#333' }
+                    ]}>
+                        {formatCurrency(tx.total)}
+                    </Text>
+                    <Text style={styles.transactionSub}>
+                        {tx.quantity} x {formatCurrency(tx.price)}
+                    </Text>
+                </View>
+            </View>
+        ))
       )}
       
       <View style={{ height: 40 }} />
@@ -393,5 +465,12 @@ const styles = StyleSheet.create({
   assetTicker: { fontWeight: 'bold', fontSize: 16, color: '#333' },
   assetSub: { fontSize: 12, color: '#888' },
   
+  transactionRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 15, marginHorizontal: 20, marginBottom: 10, borderRadius: 12, elevation: 1 },
+  transactionIconBox: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  transactionTicker: { fontWeight: 'bold', fontSize: 16, color: '#333' },
+  transactionDate: { fontSize: 12, color: '#888', marginTop: 2 },
+  transactionValue: { fontWeight: 'bold', fontSize: 15 },
+  transactionSub: { fontSize: 12, color: '#666', marginTop: 2 },
+
   emptyText: { textAlign: 'center', color: '#999', marginTop: 10, fontStyle: 'italic', paddingHorizontal: 20 },
 });
