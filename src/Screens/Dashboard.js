@@ -26,7 +26,6 @@ export default function DashboardScreen({ navigation }) {
           await NavigationBar.setVisibilityAsync("hidden");
           await NavigationBar.setBehaviorAsync("overlay-swipe");
         } catch (e) {
-          // Ignora erros silenciosamente
         }
       }
     }

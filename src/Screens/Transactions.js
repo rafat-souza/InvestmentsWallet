@@ -24,7 +24,7 @@ export default function Transactions({ navigation }) {
   const [ticker, setTicker] = useState('');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
-  const [total, setTotal] = useState(0); // Novo estado para o total
+  const [total, setTotal] = useState(0); 
   const [date] = useState(new Date().toISOString().split('T')[0]);
   
   const [suggestions, setSuggestions] = useState([]);

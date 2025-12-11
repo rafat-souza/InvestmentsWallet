@@ -10,14 +10,12 @@ export default function Settings() {
     const title = "Atenção";
     const message = "Isso apagará todas as suas movimentações e ativos. Tem certeza?";
 
-    // Navegador (Web)
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(`${title}\n\n${message}`);
       if (confirmed) {
         clearAllData();
       }
     } else {
-      // Android/iOS
       Alert.alert(
         title,
         message,
